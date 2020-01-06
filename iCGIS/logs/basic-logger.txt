@@ -1,0 +1,23 @@
+[2020-01-06 23:43:13.472] [basic] [info] Program start
+[2020-01-06 23:48:01.562] [basic] [info] Program exit
+[2020-01-06 23:48:06.880] [basic] [info] Read geojson successfully
+[2020-01-07 00:17:58.501] [basic] [info] Read and parse shapefile successfully
+[2020-01-07 00:18:11.747] [basic] [info] Read and parse shapefile successfully
+[2020-01-07 00:47:05.447] [basic] [info] Program exit
+[2020-01-07 00:47:17.506] [basic] [info] Program start
+[2020-01-07 00:47:39.391] [basic] [info] Read geojson successfully
+[2020-01-07 00:47:45.219] [basic] [info] Read and parse shapefile successfully
+[2020-01-07 00:47:53.799] [basic] [info] Read and parse shapefile successfully
+[2020-01-07 00:47:59.546] [basic] [info] Read and parse shapefile successfully
+[2020-01-07 00:48:08.905] [basic] [info] Connect to postgresql successfully:PG:dbname=china host=localhost port=5432 user=postgres password=******
+[2020-01-07 00:48:44.103] [basic] [info] Program exit
+[2020-01-07 00:55:49.346] [basic] [info] Program start
+[2020-01-07 00:55:55.165] [basic] [info] Connect to postgresql successfully:PG:dbname=china host=localhost port=5432 user=postgres password=******
+[2020-01-07 00:56:03.262] [basic] [info] Program exit
+[2020-01-07 00:56:23.921] [basic] [info] Program start
+[2020-01-07 00:57:19.566] [basic] [info] Read geojson successfully
+[2020-01-07 00:57:25.649] [basic] [info] Read and parse shapefile successfully
+[2020-01-07 00:57:32.450] [basic] [info] Read and parse shapefile successfully
+[2020-01-07 00:57:37.775] [basic] [info] Read and parse shapefile successfully
+[2020-01-07 00:57:46.035] [basic] [info] Read and parse shapefile successfully
+[2020-01-07 00:57:55.308] [basic] [info] Connect to postgresql successfully:PG:dbname=china host=localhost port=5432 user=postgres password=******

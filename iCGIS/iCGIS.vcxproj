@@ -1,0 +1,239 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{B12702AD-ABFB-343A-A199-8E24837244A3}</ProjectGuid>
+    <Keyword>QtVS_v301</Keyword>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup Condition="'$(QtMsBuild)'=='' or !Exists('$(QtMsBuild)\qt.targets')">
+    <QtMsBuild>$(MSBuildProjectDirectory)\QtMsBuild</QtMsBuild>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)build\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)build\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') or !Exists('$(QtMsBuild)\qt.props')">
+    <Message Importance="High" Text="QtMsBuild: could not locate qt.targets, qt.props; project may not build correctly." />
+  </Target>
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ImportGroup Condition="Exists('$(QtMsBuild)\qt_defaults.props')">
+    <Import Project="$(QtMsBuild)\qt_defaults.props" />
+  </ImportGroup>
+  <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <QtInstall>5.12.6</QtInstall>
+    <QtModules>core;gui;widgets</QtModules>
+  </PropertyGroup>
+  <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <QtInstall>5.12.6</QtInstall>
+    <QtModules>core;gui;widgets</QtModules>
+  </PropertyGroup>
+  <ImportGroup Condition="Exists('$(QtMsBuild)\qt.props')">
+    <Import Project="$(QtMsBuild)\qt.props" />
+  </ImportGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>Disabled</Optimization>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)include;$(ProjectDir)src;$(ProjectDir)include;$(Qt_INCLUDEPATH_);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4819</DisableSpecificWarnings>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <OutputFile>$(OutDir)\$(ProjectName).exe</OutputFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(ProjectDir)lib;$(ProjectDir)lib;$(Qt_LIBPATH_);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;glew32s.lib;gdal_i.lib;jsoncppd.lib;spdlog.lib;$(Qt_LIBS_);opengl32.lib;glew32s.lib;gdal_i.lib;jsoncppd.lib;spdlog.lib;$(Qt_LIBS_);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>/ignore:4099 %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat />
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)include;$(Qt_INCLUDEPATH_);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4819</DisableSpecificWarnings>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <OutputFile>$(OutDir)\$(ProjectName).exe</OutputFile>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalDependencies>opengl32.lib;glew32s.lib;gdal_i.lib;jsoncpp.lib;spdlog.lib;$(Qt_LIBS_);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)lib;$(Qt_LIBPATH_);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="src\geo\map\georasterlayer.cpp" />
+    <ClCompile Include="src\geo\map\georasterlayerproperty.cpp" />
+    <ClCompile Include="src\geo\raster\georasterband.cpp" />
+    <ClCompile Include="src\geo\raster\georasterdata.cpp" />
+    <ClCompile Include="src\geo\raster\geotiff.cpp" />
+    <ClCompile Include="src\geo\utility\filereader.cpp" />
+    <ClCompile Include="src\icgis.cpp" />
+    <ClCompile Include="src\dialog\globalsearchresult.cpp" />
+    <ClCompile Include="src\dialog\headerviewwithcheckbox.cpp" />
+    <ClCompile Include="src\dialog\layerattributetabledialog.cpp" />
+    <ClCompile Include="src\dialog\layerstyledialog.cpp" />
+    <ClCompile Include="src\dialog\postgresqlconnect.cpp" />
+    <ClCompile Include="src\dialog\postgresqltableselect.cpp" />
+    <ClCompile Include="src\dialog\viewlog.cpp" />
+    <ClCompile Include="src\geo\geometry\geogeometrycollection.cpp" />
+    <ClCompile Include="src\geo\geometry\geolinearring.cpp" />
+    <ClCompile Include="src\geo\geometry\geolinestring.cpp" />
+    <ClCompile Include="src\geo\geometry\geomultilinestring.cpp" />
+    <ClCompile Include="src\geo\geometry\geomultipoint.cpp" />
+    <ClCompile Include="src\geo\geometry\geomultipolygon.cpp" />
+    <ClCompile Include="src\geo\geometry\geopoint.cpp" />
+    <ClCompile Include="src\geo\geometry\geopolygon.cpp" />
+    <ClCompile Include="src\geo\index\grid.cpp" />
+    <ClCompile Include="src\geo\index\gridindex.cpp" />
+    <ClCompile Include="src\geo\map\geofeature.cpp" />
+    <ClCompile Include="src\geo\map\geofeaturelayer.cpp" />
+    <ClCompile Include="src\geo\map\geofeaturelayerproperty.cpp" />
+    <ClCompile Include="src\geo\map\geomap.cpp" />
+    <ClCompile Include="src\geo\tool\kernel_density.cpp" />
+    <ClCompile Include="src\geo\utility\geojson.cpp" />
+    <ClCompile Include="src\geo\utility\geo_convert.cpp" />
+    <ClCompile Include="src\geo\utility\geo_math.cpp" />
+    <ClCompile Include="src\geo\utility\geo_utility.cpp" />
+    <ClCompile Include="src\geo\utility\sld.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\opengl\glcall.cpp" />
+    <ClCompile Include="src\opengl\indexbuffer.cpp" />
+    <ClCompile Include="src\opengl\layermanager\openglfeaturelayerdescriptor.cpp" />
+    <ClCompile Include="src\opengl\layermanager\opengllayermanager.cpp" />
+    <ClCompile Include="src\opengl\renderer.cpp" />
+    <ClCompile Include="src\opengl\shader.cpp" />
+    <ClCompile Include="src\opengl\texture.cpp" />
+    <ClCompile Include="src\opengl\vertexarray.cpp" />
+    <ClCompile Include="src\opengl\vertexbuffer.cpp" />
+    <ClCompile Include="src\opengl\vertexbufferlayout.cpp" />
+    <ClCompile Include="src\utility.cpp" />
+    <ClCompile Include="src\widget\colorblockwidget.cpp" />
+    <ClCompile Include="src\widget\comboboxproxystyle.h" />
+    <ClCompile Include="src\widget\globalsearchwidget.cpp" />
+    <ClCompile Include="src\widget\layerstreewidget.cpp" />
+    <ClCompile Include="src\widget\layerstreewidgetitem.cpp" />
+    <ClCompile Include="src\widget\openglwidget.cpp" />
+    <ClCompile Include="src\widget\searchcompleter.cpp" />
+    <ClCompile Include="src\widget\toolboxtreewidget.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="src\icgis.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtRcc Include="icgis.qrc" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="src\dialog\globalsearchresult.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="src\dialog\headerviewwithcheckbox.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="src\dialog\layerattributetabledialog.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="src\dialog\layerstyledialog.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="src\dialog\postgresqlconnect.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="src\dialog\postgresqltableselect.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="src\dialog\viewlog.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\geo\geometry\geogeometry.h" />
+    <ClInclude Include="src\geo\geo_base.hpp" />
+    <ClInclude Include="src\geo\index\grid.h" />
+    <ClInclude Include="src\geo\index\gridindex.h" />
+    <ClInclude Include="src\geo\index\spatialindex.h" />
+    <ClInclude Include="src\geo\map\geofeature.h" />
+    <ClInclude Include="src\geo\map\geofielddefn.h" />
+    <ClInclude Include="src\geo\map\geolayer.h" />
+    <ClInclude Include="src\geo\map\geofeaturelayerproperty.h" />
+    <ClInclude Include="src\geo\map\geomap.h" />
+    <ClInclude Include="src\geo\map\geomapproperty.h" />
+    <ClInclude Include="src\geo\map\georasterlayerproperty.h" />
+    <ClInclude Include="src\geo\raster\georasterband.h" />
+    <ClInclude Include="src\geo\raster\georasterdata.h" />
+    <ClInclude Include="src\geo\raster\geotiff.h" />
+    <ClInclude Include="src\geo\utility\filereader.h" />
+    <ClInclude Include="src\geo\utility\geojson.h" />
+    <ClInclude Include="src\geo\utility\geo_convert.h" />
+    <ClInclude Include="src\geo\utility\geo_math.h" />
+    <ClInclude Include="src\geo\utility\geo_utility.h" />
+    <ClInclude Include="src\geo\utility\sld.h" />
+    <ClInclude Include="src\logger.h" />
+    <ClInclude Include="src\memoryleakdetect.h" />
+    <ClInclude Include="src\opengl\layermanager\openglrasterdescriptor.h" />
+    <ClInclude Include="src\opengl\texture.h" />
+    <ClInclude Include="src\utility.h" />
+    <ClInclude Include="src\opengl\glcall.h" />
+    <ClInclude Include="src\opengl\indexbuffer.h" />
+    <ClInclude Include="src\opengl\layermanager\openglfeaturedescriptor.h" />
+    <ClInclude Include="src\opengl\layermanager\opengllayerdescriptor.h" />
+    <ClInclude Include="src\opengl\layermanager\opengllayermanager.h" />
+    <ClInclude Include="src\opengl\renderer.h" />
+    <ClInclude Include="src\opengl\shader.h" />
+    <ClInclude Include="src\opengl\vertexarray.h" />
+    <ClInclude Include="src\opengl\vertexbuffer.h" />
+    <ClInclude Include="src\opengl\vertexbufferlayout.h" />
+    <ClInclude Include="src\widget\layerstreewidgetitem.h" />
+    <ClInclude Include="src\widget\toolboxtreewidget.h" />
+    <QtMoc Include="src\widget\searchcompleter.h" />
+    <QtMoc Include="src\widget\openglwidget.h" />
+    <QtMoc Include="src\widget\layerstreewidget.h" />
+    <QtMoc Include="src\widget\globalsearchwidget.h" />
+    <QtMoc Include="src\widget\colorblockwidget.h" />
+    <QtMoc Include="src\geo\tool\kernel_density.h" />
+    <QtMoc Include="src\geo\tool\geotool.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
+    <Import Project="$(QtMsBuild)\qt.targets" />
+  </ImportGroup>
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
