@@ -6,9 +6,9 @@
 #undef USE_VLD								//
 #endif										//
 											//
-#define USE_VLD 1							//
+#define USE_VLD 0							//
 											//
-#if USE_VLD == 0							//
+#if USE_VLD == 1							//
 #include "vld.h"							//
 #endif										//
 /********************************************/
