@@ -16,6 +16,7 @@
 enum LayerStyleMode {
 	kSingleStyle = 0,
 	kCategorized = 1,
+	kRuleBased = 2
 };
 
 

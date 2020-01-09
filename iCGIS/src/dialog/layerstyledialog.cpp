@@ -54,7 +54,6 @@ void LayerStyleDialog::setupLayout()
 	modeComboBox = new QComboBox(this);
 	QStyledItemDelegate* delegate = new QStyledItemDelegate(this);
 	modeComboBox->setItemDelegate(delegate);
-//	modeComboBox->setStyleSheet("QComboBox QAbstractItemView::item {min-height: 30px;}");
 	QStringList modeList;
 	modeList << "Single symbol" << "Categorized" << "Rule-Based";
 	modeComboBox->setEditable(false);
@@ -87,8 +86,6 @@ void LayerStyleDialog::setupLayout()
 	btnOk->setFocus();
 	btnOk->setDefault(true);
 
-	stackedLayout->setCurrentIndex(layer->getStyleMode());
-
 	connect(modeComboBox, SIGNAL(currentIndexChanged(int)),
 		stackedLayout, SLOT(setCurrentIndex(int)));
 	connect(btnLoadSLD, &QPushButton::clicked,
@@ -99,6 +96,8 @@ void LayerStyleDialog::setupLayout()
 		this, &LayerStyleDialog::onBtnApplyClicked);
 	connect(btnCancel, &QPushButton::clicked,
 		this, &LayerStyleDialog::close);
+
+	modeComboBox->setCurrentIndex(layer->getStyleMode());
 }
 
 // 整个图层一种样式
@@ -283,6 +282,7 @@ void LayerStyleDialog::onBtnApplyClicked()
 		processRuleBasedStyle();
 		break;
 	}
+
 	layer->setStyleMode(LayerStyleMode(modeIndex));
 }
 
@@ -425,6 +425,10 @@ void LayerStyleDialog::processRuleBasedStyle()
 void LayerStyleDialog::onBtnLoadSldClicked()
 {
 	QString filepath = QFileDialog::getOpenFileName(this, tr("Select SLD file"), ".", tr("SLD file(*.sld)"));
+
+	if (filepath.isEmpty())
+		return;
+
 	SLDInfo* sldInfo = FileReader::readSLD(filepath, layer);
 	if (!sldInfo) {
 		LError("Read SLD file error");
