@@ -4,7 +4,9 @@
 ** description: 连接PostGIS的对话框，用户输入数据库的信息
 **				Ip、port、username、passwd、database等
 **
-** last change: 2020-01-02
+** last change: 2020-01-09
+**
+** change: Save and read config file
 ***************************************************************/
 #pragma once
 
@@ -37,7 +39,15 @@ signals:
 public slots:
 	void onConnectPostgresql();
 
-public:
+protected:
+	void closeEvent(QCloseEvent* ev);
+
+private:
+	// 读取、保存配置（用户名，数据库名，ip、port，不保存密码）
+	void readConfig(const char* cfgpath);
+	void writeConfig(const char* cfgpath);
+
+private:
 	QFrame* frame;
 
 	// lineEdit

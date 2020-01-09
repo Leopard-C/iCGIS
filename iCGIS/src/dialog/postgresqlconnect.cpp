@@ -1,7 +1,12 @@
 #include "postgresqlconnect.h"
-
 #include "logger.h"
+
 #include <QDebug>
+
+#include <fstream>
+
+#include <jsoncpp/json/json.h>
+
 
 PostgresqlConnect::PostgresqlConnect(QWidget *parent)
 	: QDialog(parent)
@@ -12,6 +17,8 @@ PostgresqlConnect::PostgresqlConnect(QWidget *parent)
 
 	setupLayout();
 	connect(this->btnConnect, SIGNAL(clicked(bool)), this, SLOT(onConnectPostgresql()));
+
+	readConfig("userdata/config/postgis.json");
 }
 
 PostgresqlConnect::~PostgresqlConnect()
@@ -22,7 +29,6 @@ void PostgresqlConnect::setupLayout()
 {
 	// frame
 	frame = new QFrame(this);
-	frame->setObjectName("frame");
 	frame->setFrameShape(QFrame::Panel);
 	frame->setFrameShadow(QFrame::Raised);
 	
@@ -39,10 +45,6 @@ void PostgresqlConnect::setupLayout()
 	lineEditPassword = new QLineEdit(frame);
 	lineEditPassword->setEchoMode(QLineEdit::Password);		// 输入密码的时候就显示圆点
 	lineEditDatabase = new QLineEdit(frame);
-
-	lineEditUserName->setText("postgres");
-	lineEditPassword->setText("jpiangliu34");
-	lineEditDatabase->setText("china");
 
 	// pushButton
 	btnConnect = new QPushButton("Connect");
@@ -78,7 +80,6 @@ void PostgresqlConnect::setupLayout()
 	formLayout = new QFormLayout(frame);
 	formLayout->setSpacing(6);
 	formLayout->setContentsMargins(11, 11, 11, 11);
-	formLayout->setObjectName("formLayout");
 	formLayout->setWidget(0, QFormLayout::LabelRole, labelServerHost);
 	formLayout->setLayout(0, QFormLayout::FieldRole, horizontalLayout_server);
 	formLayout->setWidget(1, QFormLayout::LabelRole, labelUsername);
@@ -108,5 +109,57 @@ void PostgresqlConnect::onConnectPostgresql()
 
 	emit btnConnectClicked(ip, port, username, password, database);
 	this->close();
+}
+
+void PostgresqlConnect::closeEvent(QCloseEvent* ev)
+{
+	writeConfig("userdata/config/postgis.json");
+}
+
+// 读取配置文件
+void PostgresqlConnect::readConfig(const char* cfgpath)
+{
+	Json::Reader reader;
+	Json::Value root;
+	std::ifstream ifs;
+	ifs.open(cfgpath);
+	if (!ifs.is_open())
+		return;
+
+	if (!reader.parse(ifs, root, false)) {
+		ifs.close();
+		return;
+	}
+
+	if (root["username"].isNull() || root["ip"].isNull() ||
+		root["port"].isNull() || root["database"].isNull())
+	{
+		ifs.close();
+		return;
+	}
+
+	lineEditServerIp->setText(QString::fromStdString(root["ip"].asString()));
+	lineEditServerPort->setText(QString::number(root["port"].asInt()));
+	lineEditUserName->setText(QString::fromStdString(root["username"].asString()));
+	lineEditDatabase->setText(QString::fromStdString(root["database"].asString()));
+
+	ifs.close();
+}
+
+// 写入配置文件
+// 保存连接信息（除了密码）
+void PostgresqlConnect::writeConfig(const char* cfgpath)
+{
+	Json::Value root;
+	root["username"] = lineEditUserName->text().toStdString();
+	root["ip"] = lineEditServerIp->text().toStdString();
+	root["port"] = lineEditServerPort->text().toInt();
+	root["database"] = lineEditDatabase->text().toStdString();
+
+	Json::StyledWriter sw;
+	std::ofstream ofs;
+	ofs.open(cfgpath);
+	ofs << sw.write(root);
+	ofs.close();
 }
 
