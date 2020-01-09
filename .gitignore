@@ -1,0 +1,5 @@
+.vs/*
+iCGIS/bin/*
+iCGIS/build/*
+iCGIS/logs/*
+iCGIS/data

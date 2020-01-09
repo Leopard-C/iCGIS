@@ -30,3 +30,31 @@
 [2020-01-07 18:50:21.708] [basic] [info] Connect to postgresql successfully:PG:dbname=china host=localhost port=5432 user=postgres password=******
 [2020-01-07 19:02:59.146] [basic] [error] Read SLD file error
 [2020-01-07 19:17:02.868] [basic] [info] Program exit
+[2020-01-07 20:17:15.690] [basic] [info] Program start
+[2020-01-07 20:17:24.896] [basic] [info] Read and parse shapefile successfully
+[2020-01-07 20:17:30.302] [basic] [info] Read and parse shapefile successfully
+[2020-01-07 20:17:38.279] [basic] [info] Read and parse shapefile successfully
+[2020-01-07 20:48:54.194] [basic] [info] Program start
+[2020-01-07 20:48:56.784] [basic] [info] Program exit
+[2020-01-07 21:03:13.978] [basic] [info] Program exit
+[2020-01-08 14:14:47.155] [basic] [info] Program start
+[2020-01-08 14:15:18.547] [basic] [info] Read geojson successfully
+[2020-01-08 14:16:23.963] [basic] [info] Read and parse shapefile successfully
+[2020-01-08 14:16:32.832] [basic] [info] Read and parse shapefile successfully
+[2020-01-08 14:24:55.774] [basic] [info] Program exit
+[2020-01-09 12:15:49.224] [basic] [info] Program start
+[2020-01-09 12:16:16.340] [basic] [info] Connect to postgresql successfully:PG:dbname=china host=localhost port=5432 user=postgres password=******
+[2020-01-09 12:16:24.450] [basic] [info] Program exit
+[2020-01-09 12:17:08.533] [basic] [info] Program start
+[2020-01-09 12:17:28.767] [basic] [info] Connect to postgresql successfully:PG:dbname=china host=localhost port=5432 user=postgres password=******
+[2020-01-09 12:17:47.365] [basic] [info] Program exit
+[2020-01-09 12:18:41.330] [basic] [info] Program start
+[2020-01-09 12:19:14.450] [basic] [info] Connect to postgresql successfully:PG:dbname=china host=localhost port=5432 user=postgres password=******
+[2020-01-09 12:19:58.541] [basic] [info] Connect to postgresql failed:PG:dbname=data host=localhost port=5432 user=postgres password=******
+[2020-01-09 12:20:23.691] [basic] [info] Program exit
+[2020-01-09 12:20:41.867] [basic] [info] Program start
+[2020-01-09 12:20:56.207] [basic] [info] Connect to postgresql successfully:PG:dbname=china host=localhost port=5432 user=postgres password=******
+[2020-01-09 12:21:13.026] [basic] [info] Program exit
+[2020-01-09 12:21:28.750] [basic] [info] Program start
+[2020-01-09 12:22:22.282] [basic] [info] Connect to postgresql successfully:PG:dbname=china host=localhost port=5432 user=postgres password=******
+[2020-01-09 12:22:28.196] [basic] [info] Program exit
