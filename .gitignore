@@ -3,3 +3,4 @@ iCGIS/bin/*
 iCGIS/build/*
 iCGIS/logs/*
 iCGIS/data
+iCGIS/userdata/config/*
