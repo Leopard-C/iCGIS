@@ -1,3 +1,5 @@
+Qt Creator版本[Windows & Linux]参见：[Leopard-C/iCGIS-Linux](https://github.com/Leopard-C/iCGIS-Linux)
+
 ## 一、实习目标
 
 编写底层代码解析GeoJson、借助GDAL读取Shapefile以及连接PostGIS获取数据。使用Qt设计窗口界面，并调用原生OpenGL绘图。在绘图的基础上，读取SLD文件，并应用到所读取的相应图层。同时创建空间索引，优化查询效率。最后，在此基础上，实现核密度分析。
