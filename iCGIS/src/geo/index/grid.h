@@ -1,7 +1,7 @@
 /*******************************************************
 ** class name:  Grid
 **
-** description: 格网索引中每个格子的类
+** description: Used in grid index
 **
 ** last change: 2020-01-02
 *******************************************************/
@@ -14,20 +14,22 @@
 
 class Grid {
 public:
-	Grid(int id) : id(id) {}
-	Grid(int id, const GeoExtent& extent)
-		: id(id), extent(extent) {}
+    Grid(int id) : id(id) {}
+    Grid(int id, const GeoExtent& extent)
+        : id(id), extent(extent) {}
 
-	int getId() const { return id; }
-	const GeoExtent& getExtent() const { return extent; }
-	GeoFeature* getFeature(int idx) const { return featuresList[idx]; }
-	int getFeatureCount() const { return featuresList.size(); }
+    int getId() const { return id; }
+    const GeoExtent& getExtent() const { return extent; }
+    GeoFeature* getFeature(int idx) const { return featuresList[idx]; }
+    int getFeatureCount() const { return featuresList.size(); }
 
-	void setExtent(const GeoExtent& extentIn) { extent = extentIn; }
-	void addFeature(GeoFeature* feature) { featuresList.push_back(feature); }
+    void setExtent(const GeoExtent& extentIn) { extent = extentIn; }
+    void addFeature(GeoFeature* feature) { featuresList.push_back(feature); }
+
+    void adjustToFit() { featuresList.shrink_to_fit(); }
 
 private:
-	int id;
-	GeoExtent extent;
-	std::vector<GeoFeature*> featuresList;
+    int id;
+    GeoExtent extent;
+    std::vector<GeoFeature*> featuresList;
 };

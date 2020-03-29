@@ -1,13 +1,11 @@
 /************************************************************************
 ** class name:  SpatialIndex
 **
-** description: 空间索引基类，子类要实现queryFeatures()这一纯虚函数
-**
 ** last change: 2020-01-02
 ************************************************************************/
 #pragma once
 
-#include "memoryleakdetect.h"
+#include "util/memoryleakdetect.h"
 #include "geo/geo_base.hpp"
 #include "geo/map/geofeature.h"
 
@@ -15,12 +13,15 @@
 
 class SpatialIndex {
 public:
-	SpatialIndex() {}
-	virtual ~SpatialIndex() {}
+    SpatialIndex() {}
+    virtual ~SpatialIndex();
 
-	/* 查询空间要素 */
-	virtual void queryFeatures(double x, double y, GeoFeature*& featureResult) = 0;
-	virtual void queryFeatures(const GeoExtent& extent, std::vector<GeoFeature*>& featuresResult) = 0;
+    // Point query
+    // construct a square
+    // x, y:        square's central point
+    // halfEdge:    a half of rectangle's length of side
+    virtual void queryFeature(double x, double y, double halfEdge, GeoFeature*& featureResult) = 0;
 
-private:
+    // box query
+    virtual void queryFeatures(const GeoExtent& extent, std::vector<GeoFeature*>& featuresResult) = 0;
 };

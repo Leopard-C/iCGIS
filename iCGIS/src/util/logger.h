@@ -1,12 +1,11 @@
 /*******************************************************
 ** class name:  Logger
 **
-** description: 基于spdlog库的封装日志类，使用方式：
-**                 LError(), LInfo(), LDebug() ...
+** description: Log to file:
+**                LError(), LInfo(), LDebug() ...
 **
 ** last change: 2019-12-20
 *******************************************************/
-
 #pragma once
 
 #include <spdlog/spdlog.h>
@@ -53,20 +52,20 @@ private:
 #endif // suffix
 
 
-/* 打印到控制台 */
+// print in console
 #ifdef NDEBUG
 #define Log(x)
 #define LogF(fmt, ...)
 #define LogEx(fmt, ...)
 #else
 #include <iostream>
-#define Log(x) std::cout << x << std::endl;
+#define Log(x) std::cout << x << std::endl
 #define LogF(fmt, ...) printf("%s"##fmt"\n", ##__VA_ARGS__)
 #define LogEx(fmt, ...) printf("%s(%d)-<%s>: "##fmt, __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__)
 #endif
 
 
-// 打印到文件
+// output to file
 #define LTrace(msg, ...) Logger::GetInstance().GetLogger()->trace(suffixsth(msg), __VA_ARGS__)
 #define LDebug(...) Logger::GetInstance().GetLogger()->debug(__VA_ARGS__)
 #define LInfo(...) Logger::GetInstance().GetLogger()->info(__VA_ARGS__)

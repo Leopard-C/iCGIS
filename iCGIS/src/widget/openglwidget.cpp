@@ -1,4 +1,3 @@
-#include "opengl/vertexbufferlayout.h"
 #include "widget/openglwidget.h"
 
 #include <glm/glm.hpp>
@@ -6,16 +5,19 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <mapbox/earcut.hpp>
 
+#include "opengl/vertexbufferlayout.h"
+#include "opengl/openglfeaturedescriptor.h"
 #include "geo/geometry/geogeometry.h"
 #include "geo/utility/geo_utility.h"
-#include "utility.h"
+#include "util/utility.h"
+#include "util/env.h"
+#include "util/appevent.h"
 
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <iostream>
-
-double triTime = 0.0;
+#include <QDebug>
 
 
 /*************************************/
@@ -24,22 +26,33 @@ double triTime = 0.0;
 /*                                   */
 /*************************************/
 
-OpenGLWidget::OpenGLWidget(GeoMap* mapIn, QWidget* parent /*= 0*/)
-		: QOpenGLWidget(parent), map(mapIn)
+OpenGLWidget::OpenGLWidget(QWidget* parent /*= 0*/)
+    : QOpenGLWidget(parent), map(Env::map), opList(Env::opList)
 {
-	renderer = new Renderer();
+    this->setMouseTracking(true);
+    this->setFocusPolicy(Qt::ClickFocus);
+
+    connect(this, &OpenGLWidget::sigUpdateCoord,
+            AppEvent::getInstance(), &AppEvent::onUpdateCoord);
+    connect(AppEvent::getInstance(), &AppEvent::sigZoomToMap,
+            this, &OpenGLWidget::onZoomToMap);
+    connect(AppEvent::getInstance(), &AppEvent::sigZoomToLayer,
+            this, &OpenGLWidget::onZoomToLayer);
+    connect(AppEvent::getInstance(), &AppEvent::sigUpdateOpengl,
+            this, [this]{ update(); });
+    connect(AppEvent::getInstance(), &AppEvent::sigSendMapToGPU,
+            this, &OpenGLWidget::onSendMapToGPU);
+    connect(AppEvent::getInstance(), &AppEvent::sigSendLayerToGPU,
+            this, &OpenGLWidget::onSendLayerToGPU);
+    connect(AppEvent::getInstance(), &AppEvent::sigSendFeatureToGPU,
+            this, &OpenGLWidget::onSendFeatureToGPU);
 }
 
 OpenGLWidget::~OpenGLWidget()
 {
-	// very important
-	makeCurrent();
-	isRunning = false;
-
-	if (openglLayerManager)
-		delete openglLayerManager;
-	if (renderer)
-		delete renderer;
+    // very important
+    makeCurrent();
+    isRunning = false;
 }
 
 /**********************************************/
@@ -49,71 +62,64 @@ OpenGLWidget::~OpenGLWidget()
 /**********************************************/
 void OpenGLWidget::initializeGL()
 {
-	if (glewInit() != GLEW_NO_ERROR) {
-		std::cout << "Glew init failed" << std::endl;
-		return;
-	}
+    if (glewInit() != GLEW_NO_ERROR) {
+        std::cout << "Glew init failed" << std::endl;
+        return;
+    }
 
-	// 图层管理
-	openglLayerManager = new OpenglLayerManager();
-	openglLayerManager->createShaders();
-	openglLayerManager->setMap(this->map);
-	openglLayerManager->setRenderer(this->renderer);
+    Env::createShaders();
 
-	// view矩阵
-	glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 1.0f);
-	glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-	glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-	view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+    // view matrix
+    glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 1.0f);
+    glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+    glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+    view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 }
 
 void OpenGLWidget::resizeGL(int w, int h) {
-	GLCall(glViewport(0, 0, w, h));
-	GLCall(glMatrixMode(GL_PROJECTION));
+    GLCall(glViewport(0, 0, w, h));
+    GLCall(glMatrixMode(GL_PROJECTION));
 
-	if (!map || map->isEmpty())
-		return;
-	if (h < 1)
-		h = 1;
+    if (!map || map->isEmpty())
+        return;
+    if (h < 1)
+        h = 1;
 
-	// proj
-	float aspectRatio = float(w) / h;
-	GeoExtent mapExtent = map->getExtent();
-	if (mapExtent.aspectRatio() < aspectRatio) {
-		adjustedMapExtent.minX = (mapExtent.minX - mapExtent.centerX()) * aspectRatio / mapExtent.aspectRatio() + mapExtent.centerX();
-		adjustedMapExtent.maxX = (mapExtent.maxX - mapExtent.centerX()) * aspectRatio / mapExtent.aspectRatio() + mapExtent.centerX();
-	}
-	else {
-		adjustedMapExtent.minY = (mapExtent.minY - mapExtent.centerY()) * mapExtent.aspectRatio() / aspectRatio + mapExtent.centerY();
-		adjustedMapExtent.maxY = (mapExtent.maxY - mapExtent.centerY()) * mapExtent.aspectRatio() / aspectRatio + mapExtent.centerY();
-	}
-	proj = glm::ortho(float(adjustedMapExtent.minX), float(adjustedMapExtent.maxX),
-		float(adjustedMapExtent.minY), float(adjustedMapExtent.maxY),
-		-1.0f, 1.0f);
+    // projection matrix
+    float aspectRatio = float(w) / h;
+    GeoExtent mapExtent = map->getExtent();
+    if (mapExtent.aspectRatio() < aspectRatio) {
+        adjustedMapExtent.minX = (mapExtent.minX - mapExtent.centerX()) * aspectRatio / mapExtent.aspectRatio() + mapExtent.centerX();
+        adjustedMapExtent.maxX = (mapExtent.maxX - mapExtent.centerX()) * aspectRatio / mapExtent.aspectRatio() + mapExtent.centerX();
+    }
+    else {
+        adjustedMapExtent.minY = (mapExtent.minY - mapExtent.centerY()) * mapExtent.aspectRatio() / aspectRatio + mapExtent.centerY();
+        adjustedMapExtent.maxY = (mapExtent.maxY - mapExtent.centerY()) * mapExtent.aspectRatio() / aspectRatio + mapExtent.centerY();
+    }
+    proj = glm::ortho(float(adjustedMapExtent.minX), float(adjustedMapExtent.maxX),
+                      float(adjustedMapExtent.minY), float(adjustedMapExtent.maxY),
+                      -1.0f, 1.0f);
 
-	// MVP
-	setMVP();
+    // MVP
+    setMVP();
 
-	update();
+    update();
 }
 
 void OpenGLWidget::paintGL()
 {
-	renderer->Clear();
+    Env::renderer.Clear();
 
-	if (!isRunning || !map || map->isEmpty())
-		return;
+    if (!isRunning || !map || map->isEmpty())
+        return;
 
-	// 绘制地图
-	openglLayerManager->drawAll();
+    map->Draw();
 
-	// 是否在拉框选择
-	//  动态绘制矩形
-	if (isRectSelecting) {
-		GLCall(glUseProgram(0));
-		drawRectNoFill(mouseBeginPos, mouseCurrPos, 1.0f, 0.5f, 0.0f, 5);
-		drawRectFillColor(mouseBeginPos, mouseCurrPos, 1.0f, 0.5f, 0.0f, 0.5f);
-	}
+    if (isRectSelecting) {
+        GLCall(glUseProgram(0));
+        drawRectNoFill(mouseBeginPos, mouseCurrPos, 1.0f, 0.5f, 0.0f, 5);
+        drawRectFillColor(mouseBeginPos, mouseCurrPos, 1.0f, 0.5f, 0.0f, 0.5f);
+    }
 }
 
 
@@ -121,111 +127,213 @@ void OpenGLWidget::paintGL()
 /*         Unility Function     */
 /********************************/
 
-// 世界坐标系坐标到屏幕坐标(在vertex shader中完成）
-// 根据MVP矩阵计算得到
-// 只是偶尔调用，绘图地图时由GPU进行转换
+// WCS ==> SCS  (world/screen coordinate system)
+// Just use occasionally
+// When draw shapes, it will be processed by GPU
 QPoint OpenGLWidget::xy2screen(double geoX, double geoY)
 {
-	// 坐标点在规范立方体中的坐标
-	// 即 x:[-1, 1]  y:[-1, 1]  z:[-1, 1]
-	float stdX = (2 * geoX + 2 * xOffset - (adjustedMapExtent.minX + adjustedMapExtent.maxX)) / adjustedMapExtent.width();
-	float stdY = (2 * geoY + 2 * yOffset - (adjustedMapExtent.minY + adjustedMapExtent.maxY)) / adjustedMapExtent.height();
+    // x:[-1, 1]  y:[-1, 1]  z:[-1, 1]
+    float stdX = (2 * geoX + 2 * xOffset - (adjustedMapExtent.minX + adjustedMapExtent.maxX)) / adjustedMapExtent.width();
+    float stdY = (2 * geoY + 2 * yOffset - (adjustedMapExtent.minY + adjustedMapExtent.maxY)) / adjustedMapExtent.height();
 
-	float screenX = (stdX + 1) * this->width() / 2.0f;
-	float screenY = this->height() - (stdY + 1) * this->height() / 2.0f;
+    float screenX = (stdX + 1) * this->width() / 2.0f;
+    float screenY = this->height() - (stdY + 1) * this->height() / 2.0f;
 
-	return { int(screenX), int(screenY) };
+    return { int(screenX), int(screenY) };
 }
 
 
-// 屏幕坐标到世界坐标系坐标
+// SCS ==> WCS
 GeoRawPoint OpenGLWidget::screen2xy(int screenX, int screenY)
 {
-	// 鼠标点在规范立方体中的坐标
-	// 即 x:[-1, 1]  y:[-1, 1]  z:[-1, 1]
-	GeoRawPoint stdXY = screen2stdxy(screenX, screenY);
+    // x:[-1, 1]  y:[-1, 1]  z:[-1, 1]
+    GeoRawPoint stdXY = screen2stdxy(screenX, screenY);
 
-	float geoX = (stdXY.x * adjustedMapExtent.width() + adjustedMapExtent.minX + adjustedMapExtent.maxX - 2 * xOffset) / (2 * zoom);
-	float geoY = (stdXY.y * adjustedMapExtent.height() + adjustedMapExtent.minY + adjustedMapExtent.maxY - 2 * yOffset) / (2 * zoom);
+    float geoX = (stdXY.x * adjustedMapExtent.width() + adjustedMapExtent.minX + adjustedMapExtent.maxX - 2 * xOffset) / (2 * zoom);
+    float geoY = (stdXY.y * adjustedMapExtent.height() + adjustedMapExtent.minY + adjustedMapExtent.maxY - 2 * yOffset) / (2 * zoom);
 
-	return { geoX, geoY };
+    return { geoX, geoY };
 }
 
 
-// 屏幕坐标到NDC
+// SCS ==> NDC
 GeoRawPoint OpenGLWidget::screen2stdxy(int screenX, int screenY)
 {
-	float stdX = (2.0f * screenX / this->width()) - 1;
-	float stdY = (2.0f * (this->height() - screenY) / this->height()) - 1;
-	return { stdX, stdY };
+    float stdX = (2.0f * screenX / this->width()) - 1;
+    float stdY = (2.0f * (this->height() - screenY) / this->height()) - 1;
+    return { stdX, stdY };
 }
 
-// 重新计算MVP
+// Length in: SCS ==> WCS
+double OpenGLWidget::getLengthInWorldSystem(int screenLength) {
+    return adjustedMapExtent.width() * screenLength / (this->width() * zoom);
+}
+
+// Update MVP matrix
 void OpenGLWidget::updateMVP(bool updateModel /*= true*/, bool updateView /*= true*/, bool updateProj /*= false*/)
 {
-	GeoExtent mapExtent = map->getExtent();
-	adjustedMapExtent = mapExtent;
+    GeoExtent mapExtent = map->getExtent();
+    adjustedMapExtent = mapExtent;
 
-	// model矩阵
-	if (updateModel) {
-		// model
-		// 平移
-		xOffset = 0.0f;
-		yOffset = 0.0f;
-		trans = glm::translate(glm::mat4(1.0f), glm::vec3(xOffset, yOffset, 0.0f));
-		// 缩放
-		zoom = 1.0f;
-		scale = glm::scale(glm::mat4(1.0f), glm::vec3(zoom, zoom, 1.0f));
-		model = trans * scale;
-	}
+    // model matrix
+    if (updateModel) {
+        // model
+        // translation
+        xOffset = 0.0f;
+        yOffset = 0.0f;
+        trans = glm::translate(glm::mat4(1.0f), glm::vec3(xOffset, yOffset, 0.0f));
+        // sacle
+        zoom = 1.0f;
+        scale = glm::scale(glm::mat4(1.0f), glm::vec3(zoom, zoom, 1.0f));
+        model = trans * scale;
+    }
 
-	// proj矩阵
-	if (updateProj) {
-		float aspectRatio = float(this->width()) / this->height();
-		if (mapExtent.aspectRatio() < aspectRatio) {
-			adjustedMapExtent.minX = (mapExtent.minX - mapExtent.centerX()) * aspectRatio / mapExtent.aspectRatio() + mapExtent.centerX();
-			adjustedMapExtent.maxX = (mapExtent.maxX - mapExtent.centerX()) * aspectRatio / mapExtent.aspectRatio() + mapExtent.centerX();
-		}
-		else {
-			adjustedMapExtent.minY = (mapExtent.minY - mapExtent.centerY()) * mapExtent.aspectRatio() / aspectRatio + mapExtent.centerY();
-			adjustedMapExtent.maxY = (mapExtent.maxY - mapExtent.centerY()) * mapExtent.aspectRatio() / aspectRatio + mapExtent.centerY();
-		}
-		proj = glm::ortho(float(adjustedMapExtent.minX), float(adjustedMapExtent.maxX),
-			float(adjustedMapExtent.minY), float(adjustedMapExtent.maxY),
-			-1.0f, 1.0f);
-	}
+    // view matrix
+    if (updateView) {
+        glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 1.0f);
+        glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+        glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+        view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+    }
 
-	// view矩阵
-	if (updateView) {
-		glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 1.0f);
-		glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-		glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-		view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-	}
+    // projection matrix
+    if (updateProj) {
+        float aspectRatio = float(this->width()) / this->height();
+        if (mapExtent.aspectRatio() < aspectRatio) {
+            adjustedMapExtent.minX = (mapExtent.minX - mapExtent.centerX()) * aspectRatio / mapExtent.aspectRatio() + mapExtent.centerX();
+            adjustedMapExtent.maxX = (mapExtent.maxX - mapExtent.centerX()) * aspectRatio / mapExtent.aspectRatio() + mapExtent.centerX();
+        }
+        else {
+            adjustedMapExtent.minY = (mapExtent.minY - mapExtent.centerY()) * mapExtent.aspectRatio() / aspectRatio + mapExtent.centerY();
+            adjustedMapExtent.maxY = (mapExtent.maxY - mapExtent.centerY()) * mapExtent.aspectRatio() / aspectRatio + mapExtent.centerY();
+        }
+        proj = glm::ortho(float(adjustedMapExtent.minX), float(adjustedMapExtent.maxX),
+                          float(adjustedMapExtent.minY), float(adjustedMapExtent.maxY),
+                          -1.0f, 1.0f);
+    }
 }
 
-// 设置Mode View Project矩阵
 void OpenGLWidget::setMVP()
 {
-	glm::mat4 mvp = proj * view * model;
-	openglLayerManager->setMVP(mvp);
+    glm::mat4 mvp = proj * view * model;
+
+    Env::pointShader.Bind();
+    Env::pointShader.SetUniformMat4f("u_MVP", mvp);
+
+    Env::lineShader.Bind();
+    Env::lineShader.SetUniformMat4f("u_MVP", mvp);
+
+    Env::polygonShader.Bind();
+    Env::polygonShader.SetUniformMat4f("u_MVP", mvp);
+
+    Env::borderShader.Bind();
+    Env::borderShader.SetUniformMat4f("u_MVP", mvp);
+
+    Env::highlightShader.Bind();
+    Env::highlightShader.SetUniformMat4f("u_MVP", mvp);
+
+    Env::textureShader.Bind();
+    Env::textureShader.SetUniformMat4f("u_MVP", mvp);
 }
 
 /**************************************************/
 /*                                                */
-/*              Mouse Event                       */
+/*              Event                             */
 /*                                                */
 /**************************************************/
+
+/***************************************/
+/*            Mouse enter              */
+/***************************************/
+void OpenGLWidget::enterEvent(QEvent*) {
+    qDebug() << "enter";
+    switch (Env::cursorType) {
+    case Env::CursorType::Normal: {
+        setCursor(Qt::ArrowCursor);
+        break;
+    }
+    case Env::CursorType::Editing: {
+        QCursor editingCursor(QPixmap("res/icons/editing-arrow.ico"), 4, 1);
+        setCursor(editingCursor);
+        break;
+    }
+    case Env::CursorType::Palm: {
+        setCursor(Qt::OpenHandCursor);
+        break;
+    }
+    case Env::CursorType::WhatIsThis: {
+        QCursor whatIsThisCursor(QPixmap("res/icons/what-is-this.png"), 2, 4);
+        setCursor(whatIsThisCursor);
+        break;
+    }
+    }
+}
+
+/***************************************/
+/*            Press key                */
+/***************************************/
+void OpenGLWidget::keyPressEvent(QKeyEvent *ev) {
+    qDebug() << "Key press: " << ev->key();
+    makeCurrent();
+    switch (ev->key()) {
+    case Qt::Key_Delete: {
+        std::map<GeoFeatureLayer*, std::vector<GeoFeature*>> selectedFeatures;
+        map->getAllSelectedFeatures(selectedFeatures);
+        if (selectedFeatures.empty())
+            break;
+        opList.addDeleteOperation(selectedFeatures)->operate();
+        clearSelected();
+        break;
+    }
+    case Qt::Key_Z: {
+        if (ev->modifiers() != Qt::ControlModifier)
+            break;
+        opList.undo();
+        break;
+    }
+    case Qt::Key_R: {
+        if (ev->modifiers() != Qt::ControlModifier)
+            break;
+        opList.redo();
+        break;
+    }
+    default:
+        return;
+    }
+    update();
+}
+
 
 /***************************************/
 /*            Mouse Press              */
 /***************************************/
 void OpenGLWidget::mousePressEvent(QMouseEvent* ev)
 {
-	mouseBeginPos = mouseLastPos = ev->pos();
+    mouseBeginPos = mouseLastPos = ev->pos();
+    isMouseClicked = true;
 
-	// 清空已经选中的要素
-	clearSelected();
+    /* What is This */
+    if (Env::cursorType == Env::CursorType::WhatIsThis) {
+        clearSelected();
+        return;
+    }
+
+    /* Whether move selected features */
+    if (Env::isEditing && Env::cursorType == Env::CursorType::Editing && isSelected) {
+        GeoRawPoint geoXY = screen2xy(mouseBeginPos.x(), mouseBeginPos.y());
+        double halfEdge = getLengthInWorldSystem(5);
+        GeoFeatureLayer* featureLayer = nullptr;
+        GeoFeature* feature = nullptr;
+        map->queryFeature(geoXY.x, geoXY.y, halfEdge, featureLayer, feature);
+        if (featureLayer && feature && feature->isSelected()) {
+            isMovingFeatures = true;
+            return;
+        }
+    }
+
+    if (Env::isEditing && Env::cursorType == Env::CursorType::Editing) {
+        clearSelected();
+    }
 }
 
 /***************************************/
@@ -233,106 +341,152 @@ void OpenGLWidget::mousePressEvent(QMouseEvent* ev)
 /***************************************/
 void OpenGLWidget::mouseMoveEvent(QMouseEvent* ev)
 {
-	mouseCurrPos = ev->pos();
+    mouseCurrPos = ev->pos();
 
-	// 是否已经加载地图
-	if (!map || map->isEmpty())
-		return;
+    if (!map || map->isEmpty())
+        return;
 
-	GeoExtent mapExtent = map->getExtent();
+    // If mouse's left button was not pressed,
+    //  update current coordinate in WCS under the cursor
+    if (!isMouseClicked) {
+        GeoRawPoint geoXY = screen2xy(ev->x(), ev->y());
+        emit sigUpdateCoord(geoXY.x, geoXY.y);
+        return;
+    }
 
-	makeCurrent();
+    if (Env::cursorType == Env::CursorType::WhatIsThis) {
+        GeoRawPoint geoXY = screen2xy(ev->x(), ev->y());
+        emit sigUpdateCoord(geoXY.x, geoXY.y);
+        return;
+    }
 
-	// 是否处于编辑状态
-	// 编辑状态不可拖动地图
-	if (isEditing) {
-		// 是否达到框选的最低限度
-		if ((mouseCurrPos - mouseBeginPos).manhattanLength() < 6)
-			return;
-		isRectSelecting = true;
-		update();
-	}
+    makeCurrent();
 
-	// 仅仅是移动图层
-	else {
-		GeoRawPoint stdLastPos = screen2stdxy(mouseLastPos.x(), mouseLastPos.y());
-		GeoRawPoint stdCurrPos = screen2stdxy(mouseCurrPos.x(), mouseCurrPos.y());
-		xOffset += ((stdCurrPos.x - stdLastPos.x) * adjustedMapExtent.width()) / 2.0;
-		yOffset += ((stdCurrPos.y - stdLastPos.y) * adjustedMapExtent.height()) / 2.0;
+    // Moving featrues
+    if (isMovingFeatures && Env::cursorType == Env::CursorType::Editing) {
+        GeoRawPoint lastGeoXY = screen2xy(mouseLastPos.x(), mouseLastPos.y());
+        GeoRawPoint currGeoXY = screen2xy(mouseCurrPos.x(), mouseCurrPos.y());
+        emit sigUpdateCoord(currGeoXY.x, currGeoXY.y);
+        map->offsetSelectedFeatures(currGeoXY.x - lastGeoXY.x, currGeoXY.y - lastGeoXY.y);
+        mouseLastPos = mouseCurrPos;
+        update();
+        return;
+    }
 
-		// model
-		// 平移
-		trans = glm::translate(glm::mat4(1.0f), glm::vec3(xOffset, yOffset, 0.0f));
-		model = trans * scale;
+    // Editing fetures
+    if (Env::isEditing && Env::cursorType == Env::CursorType::Editing) {
+        // the distance of the mouse moves
+        if ((mouseCurrPos - mouseBeginPos).manhattanLength() < 6)
+            return;
+        // Draw rectangle dynamically
+        isRectSelecting = true;
+        update();
+    }
 
-		// MVP
-		setMVP();
+    // Moving the map
+    else {
+        GeoRawPoint stdLastPos = screen2stdxy(mouseLastPos.x(), mouseLastPos.y());
+        GeoRawPoint stdCurrPos = screen2stdxy(mouseCurrPos.x(), mouseCurrPos.y());
+        xOffset += ((stdCurrPos.x - stdLastPos.x) * adjustedMapExtent.width()) / 2.0;
+        yOffset += ((stdCurrPos.y - stdLastPos.y) * adjustedMapExtent.height()) / 2.0;
 
-		mouseLastPos = mouseCurrPos;
-		update();
-	}
+        // model matrix
+        // translation
+        trans = glm::translate(glm::mat4(1.0f), glm::vec3(xOffset, yOffset, 0.0f));
+        model = trans * scale;
+
+        // MVP
+        setMVP();
+
+        mouseLastPos = mouseCurrPos;
+        update();
+    }
 }
- 
+
 /***************************************/
 /*            Mouse Release            */
 /***************************************/
 void OpenGLWidget::mouseReleaseEvent(QMouseEvent* ev)
 {
-	QPoint mouseCurrPos = ev->pos();
-	isRectSelecting = false;
+    QPoint mouseCurrPos = ev->pos();
+    isRectSelecting = false;
+    isMouseClicked = false;
 
-	// 是否在编辑状态
-	if (isEditing) {
-		// 用户是在点选
-		if ((mouseCurrPos - mouseBeginPos).manhattanLength() < 6) {
-			GeoRawPoint geoXY = screen2xy(mouseBeginPos.x(), mouseBeginPos.y());
-			std::cout << geoXY.x << " " << geoXY.y << std::endl;
-			int layersCount = map->getNumLayers();
-			// 按图层优先顺序查询，如果在优先级高的图层查询到，就终止查询
-			for (int i = 0; i < layersCount; ++i) {
-				GeoLayer* layer = map->getLayerByOrder(i);
-				if (layer->getLayerType() == kFeatureLayer) {
-					GeoFeatureLayer* featureLayer = layer->toFeatureLayer();
-					if (!featureLayer->isEditable() || !featureLayer->isVisable())
-						continue;
-					GeoFeature* feature = nullptr;
-					featureLayer->queryFeatures(geoXY.x, geoXY.y, feature);
-					if (feature) {
-						openglLayerManager->setSelectedFeature(featureLayer->getLID(), feature);
-						update();
-						return;
-					}
-				}
-			}
-		}
-		// 用户是在框选
-		else {
-			GeoRawPoint leftTop = screen2xy(mouseBeginPos.x(), mouseBeginPos.y());
-			GeoRawPoint rightBottom = screen2xy(mouseCurrPos.x(), mouseCurrPos.y());
-			GeoExtent rect(leftTop, rightBottom);
-			int layersCount = map->getNumLayers();
-			// 按图层优先顺序查询，如果在优先级高的图层查询到，就终止查询
-			for (int i = 0; i < layersCount; ++i) {
-				GeoLayer* layer = map->getLayerByOrder(i);
-				if (layer->getLayerType() == kFeatureLayer) {
-					GeoFeatureLayer* featureLayer = layer->toFeatureLayer();
-					if (!featureLayer->isEditable() || !featureLayer->isVisable())
-						continue;
-					std::vector<GeoFeature*> features;
-					featureLayer->queryFeatures(rect, features);
-					if (features.size() > 0) {
-						openglLayerManager->setSelectedFeatures(featureLayer->getLID(), features);
-						update();
-						return;
-					}
-				}
-			}
-		}
+    if (!map || map->isEmpty())
+        return;
 
-		update();
-	} // end if isEditing
+    /* What is This */
+    if (Env::cursorType == Env::CursorType::WhatIsThis) {
+        GeoRawPoint geoXY = screen2xy(mouseBeginPos.x(), mouseBeginPos.y());
+        double halfEdge = getLengthInWorldSystem(5);
+        GeoFeatureLayer* featureLayer = nullptr;
+        GeoFeature* feature = nullptr;
+        map->queryFeature(geoXY.x, geoXY.y, halfEdge, featureLayer, feature);
+        if (featureLayer && feature) {
+            map->emplaceSelectedFeature(featureLayer->getLID(), feature);
+            if (!whatIsThisDialog) {
+                whatIsThisDialog = new WhatIsThisDialog(this);
+                connect(whatIsThisDialog, &WhatIsThisDialog::closed, this, [this]{
+                    this->whatIsThisDialog = nullptr;
+                });
+                whatIsThisDialog->show();
+            }
+            whatIsThisDialog->setFeature(featureLayer, feature);
+        }
+        update();
+        return;
+    }
 
-	QOpenGLWidget::mouseReleaseEvent(ev);
+    // Moving featrues
+    if (isMovingFeatures) {
+        GeoRawPoint beginGeoXY = screen2xy(mouseBeginPos.x(), mouseBeginPos.y());
+        GeoRawPoint endGeoXY = screen2xy(mouseCurrPos.x(), mouseCurrPos.y());
+        double offsetX = endGeoXY.x - beginGeoXY.x;
+        double offsetY = endGeoXY.y - beginGeoXY.y;
+        std::map<GeoFeatureLayer*, std::vector<GeoFeature*>> selectedFeatures;
+        map->getAllSelectedFeatures(selectedFeatures);
+        opList.addMoveOperation(selectedFeatures, offsetX, offsetY);
+        for (auto& f1 : selectedFeatures) {
+            f1.first->updateExtent();
+            f1.first->createGridIndex();    // update spatial index
+        }
+        isMovingFeatures = false;
+        update();
+        return;
+    }
+
+    // Editing
+    if (Env::isEditing && Env::cursorType == Env::CursorType::Editing) {
+        // Point selection
+        if ((mouseCurrPos - mouseBeginPos).manhattanLength() < 6) {
+            GeoRawPoint geoXY = screen2xy(mouseBeginPos.x(), mouseBeginPos.y());
+            double halfEdge = getLengthInWorldSystem(8);
+            GeoFeatureLayer* featureLayer = nullptr;
+            GeoFeature* feature = nullptr;
+            map->queryFeature(geoXY.x, geoXY.y, halfEdge, featureLayer, feature);
+            if (featureLayer && feature) {
+                map->emplaceSelectedFeature(featureLayer->getLID(), feature);
+                isSelected = true;
+            }
+        }
+        // Box selection
+        else {
+            GeoRawPoint leftTop = screen2xy(mouseBeginPos.x(), mouseBeginPos.y());
+            GeoRawPoint rightBottom = screen2xy(mouseCurrPos.x(), mouseCurrPos.y());
+            GeoExtent rect(leftTop, rightBottom);
+            rect.normalize();   // normalize
+            std::map<GeoFeatureLayer*, std::vector<GeoFeature*>> selectedFeatures;
+            map->queryFeatures(rect, selectedFeatures);
+            if (selectedFeatures.size() > 0) {
+                map->setSelectedFeatures(selectedFeatures);
+                isSelected = true;
+            }
+        }
+        update();
+        return;
+    } // end if isEditing
+
+    QOpenGLWidget::mouseReleaseEvent(ev);
 }
 
 /***************************************/
@@ -340,42 +494,41 @@ void OpenGLWidget::mouseReleaseEvent(QMouseEvent* ev)
 /***************************************/
 void OpenGLWidget::wheelEvent(QWheelEvent* ev)
 {
-	GeoRawPoint geoXY = screen2xy(ev->x(), ev->y());
+    GeoRawPoint geoXY = screen2xy(ev->x(), ev->y());
 
-	if (!map || map->isEmpty())
-		return;
+    if (!map || map->isEmpty())
+        return;
 
-	// 公式
-	//  Delta(xOffset) = (zoomOld - zoomNew) * zoomCenterX;
-	//  Delta(yOffset) = (zoomOld - zoomNew) * zoomCenterY;
+    // formula
+    //  Delta(xOffset) = (zoomOld - zoomNew) * zoomCenterX;
+    //  Delta(yOffset) = (zoomOld - zoomNew) * zoomCenterY;
 
-	// 放大
-	if (ev->delta() > 0) {
-		xOffset += -0.1 * zoom * geoXY.x;
-		yOffset += -0.1 * zoom * geoXY.y;
-		zoom *= 1.1;
+    // zoom in
+    if (ev->delta() > 0) {
+        xOffset += -0.1 * zoom * geoXY.x;
+        yOffset += -0.1 * zoom * geoXY.y;
+        zoom *= 1.1;
 
-		// model
-		trans = glm::translate(glm::mat4(1.0f), glm::vec3(xOffset, yOffset, 0.0f));
-		scale = glm::scale(glm::mat4(1.0f), glm::vec3(zoom, zoom, 1.0f));
-		model = trans * scale;
-	}
-	// 缩小
-	else {
-		xOffset += 0.1 / 1.1 * zoom * geoXY.x;
-		yOffset += 0.1 / 1.1 * zoom * geoXY.y;
-		zoom /= 1.1;
+        // model matrix
+        trans = glm::translate(glm::mat4(1.0f), glm::vec3(xOffset, yOffset, 0.0f));
+        scale = glm::scale(glm::mat4(1.0f), glm::vec3(zoom, zoom, 1.0f));
+        model = trans * scale;
+    }
+    // zoom out
+    else {
+        xOffset += 0.1 / 1.1 * zoom * geoXY.x;
+        yOffset += 0.1 / 1.1 * zoom * geoXY.y;
+        zoom /= 1.1;
 
-		// model
-		trans = glm::translate(glm::mat4(1.0f), glm::vec3(xOffset, yOffset, 0.0f));
-		scale = glm::scale(glm::mat4(1.0f), glm::vec3(zoom, zoom, 1.0f));
-		model = trans * scale;
-	}
+        // model matrix
+        trans = glm::translate(glm::mat4(1.0f), glm::vec3(xOffset, yOffset, 0.0f));
+        scale = glm::scale(glm::mat4(1.0f), glm::vec3(zoom, zoom, 1.0f));
+        model = trans * scale;
+    }
 
-	// MVP
-	setMVP();
-
-	update();
+    // MVP
+    setMVP();
+    update();
 }
 
 /**************************************************/
@@ -384,92 +537,34 @@ void OpenGLWidget::wheelEvent(QWheelEvent* ev)
 /*                                                */
 /**************************************************/
 
-void OpenGLWidget::onLayerOrderChanged()
+// zoom to layer
+void OpenGLWidget::onZoomToLayer(GeoLayer* layer)
 {
-	openglLayerManager->updateLayersOrder();
-	update();
+    GeoExtent layerExtent = layer->getExtent();
+
+    if (layerExtent.aspectRatio() < adjustedMapExtent.aspectRatio())
+        zoom = adjustedMapExtent.height() / layerExtent.height();
+    else
+        zoom = adjustedMapExtent.width() / layerExtent.width();
+
+    xOffset = adjustedMapExtent.centerX() - layerExtent.centerX();
+    yOffset = adjustedMapExtent.centerY() - layerExtent.centerY();
+    xOffset += (1.0f - zoom) * layerExtent.centerX();
+    yOffset += (1.0f - zoom) * layerExtent.centerY();
+
+    // model matrix
+    trans = glm::translate(glm::mat4(1.0f), glm::vec3(xOffset, yOffset, 0.0f));
+    scale = glm::scale(glm::mat4(1.0f), glm::vec3(zoom, zoom, 1.0f));
+    model = trans * scale;
+
+    setMVP();
+    update();
 }
 
-void OpenGLWidget::onStartEditing(bool editiable)
-{
-	isEditing = editiable;
-	update();
-}
-
-void OpenGLWidget::onRemoveLayer(int nLID)
-{
-	openglLayerManager->removeLayer(nLID);
-	update();
-}
-
-void OpenGLWidget::onSelectFeature(int nLID, int nFID)
-{
-	openglLayerManager->clearSelected();
-	openglLayerManager->setSelectedFeature(nLID, nFID);
-	update();
-}
-
-void OpenGLWidget::onSelectFeature(int nLID, GeoFeature* feature)
-{
-	openglLayerManager->clearSelected();
-	openglLayerManager->setSelectedFeature(nLID, feature);
-	update();
-}
-
-void OpenGLWidget::onSelectFeatures(int nLID, const std::vector<int>& nFIDs)
-{
-	openglLayerManager->clearSelected();
-	openglLayerManager->setSelectedFeatures(nLID, nFIDs);
-	update();
-}
-
-void OpenGLWidget::onSelectFeatures(int nLID, const std::vector<GeoFeature*>& features)
-{
-	openglLayerManager->clearSelected();
-	openglLayerManager->setSelectedFeatures(nLID, features);
-	update();
-}
-
-/* 找出地图中未发送给GPU的图层，并发送给GPU */
-void OpenGLWidget::onAutoSendDataToGPU()
-{
-	int layersCount = map->getNumLayers();
-	for (int i = 0; i < layersCount; ++i) {
-		GeoLayer* layer = map->getLayerById(i);
-		if (!openglLayerManager->hasSendToGPU(layer->getLID())) {
-			if (layer->getLayerType() == kFeatureLayer)
-				sendDataToGPU(layer->toFeatureLayer());
-			else
-				sendDataToGPU(layer->toRasterLayer());
-		}
-	}
-}
-
-/* 缩放至图层 */
-void OpenGLWidget::onZoomToLayer(int nLID)
-{
-	GeoLayer* layer = map->getLayerByLID(nLID);
-	if (!layer)
-		return;
-	GeoExtent layerExtent = layer->getExtent();
-
-	if (layerExtent.aspectRatio() < adjustedMapExtent.aspectRatio())
-		zoom = adjustedMapExtent.height() / layerExtent.height();
-	else
-		zoom = adjustedMapExtent.width() / layerExtent.width();
-
-	xOffset = adjustedMapExtent.centerX() - layerExtent.centerX();
-	yOffset = adjustedMapExtent.centerY() - layerExtent.centerY();
-	xOffset += (1.0f - zoom) * layerExtent.centerX();
-	yOffset += (1.0f - zoom) * layerExtent.centerY();
-
-	// model
-	trans = glm::translate(glm::mat4(1.0f), glm::vec3(xOffset, yOffset, 0.0f));
-	scale = glm::scale(glm::mat4(1.0f), glm::vec3(zoom, zoom, 1.0f));
-	model = trans * scale;
-
-	setMVP();
-	update();
+void OpenGLWidget::onZoomToMap() {
+    updateMVP(true, false, true);
+    setMVP();
+    update();
 }
 
 
@@ -479,70 +574,66 @@ void OpenGLWidget::onZoomToLayer(int nLID)
 /*                                                */
 /**************************************************/
 
-// 清空选中的要素
 void OpenGLWidget::clearSelected()
 {
-	// get opengl contex
-	makeCurrent();
+    // get opengl contex
+    makeCurrent();
 
-	openglLayerManager->clearSelected();
+    //openglLayerManager->clearSelected();
+    map->clearSelectedFeatures();
 
-	update();
+    update();
 }
 
-// 绘制填充矩形
+// Draw rectangle width fill color
 void OpenGLWidget::drawRectFillColor(const QPoint& startPoint, const QPoint& endPoint, float r, float g, float b, float a)
 {
-	GeoRawPoint leftTop = screen2stdxy(startPoint.x(), startPoint.y());
-	GeoRawPoint rightBottom = screen2stdxy(endPoint.x(), endPoint.y());
+    GeoRawPoint leftTop = screen2stdxy(startPoint.x(), startPoint.y());
+    GeoRawPoint rightBottom = screen2stdxy(endPoint.x(), endPoint.y());
 
-	// 如果设置了透明度，就启用混合
-	bool usingBlend = fabs(a - 1.0f) < 0.001f ? false : true;
-	if (usingBlend) {
-		glEnable(GL_BLEND);	// 启用混合
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);	// 混合函数
-	}
+    // Blend (Transparent display)
+    bool usingBlend = fabs(a - 1.0f) < 0.001f ? false : true;
+    if (usingBlend) {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
 
-	glColor4f(r, g, b, a);
-	glRectd(leftTop.x, leftTop.y, rightBottom.x, rightBottom.y);	// 绘制矩形内部
+    glColor4f(r, g, b, a);
+    glRectd(leftTop.x, leftTop.y, rightBottom.x, rightBottom.y);
 
-	if (usingBlend) {
-		glDisable(GL_BLEND);// 关闭混合
-	}
+    if (usingBlend) {
+        glDisable(GL_BLEND);
+    }
 }
 
-// 绘制矩形边框
+// Draw rectangel with border only
 void OpenGLWidget::drawRectNoFill(const QPoint& startPoint, const QPoint& endPoint, float r /*= 0.0f*/, float g /*= 0.0f*/, float b /*= 0.0f*/, int lineWidth /*= 1*/)
 {
-	GeoRawPoint leftTop = screen2stdxy(startPoint.x(), startPoint.y());
-	GeoRawPoint rightBottom = screen2stdxy(endPoint.x(), endPoint.y());
-	glBegin(GL_LINE_STRIP);
-		glColor3f(r, g, b);
-		glLineWidth(lineWidth);
-		glVertex2d(leftTop.x, leftTop.y);
-		glVertex2d(leftTop.x, rightBottom.y);
-		glVertex2d(rightBottom.x, rightBottom.y);
-		glVertex2d(rightBottom.x, leftTop.y);
-		glVertex2d(leftTop.x, leftTop.y);
-	glEnd();
+    GeoRawPoint leftTop = screen2stdxy(startPoint.x(), startPoint.y());
+    GeoRawPoint rightBottom = screen2stdxy(endPoint.x(), endPoint.y());
+    glBegin(GL_LINE_STRIP);
+    glColor3f(r, g, b);
+    glLineWidth(lineWidth);
+    glVertex2d(leftTop.x, leftTop.y);
+    glVertex2d(leftTop.x, rightBottom.y);
+    glVertex2d(rightBottom.x, rightBottom.y);
+    glVertex2d(rightBottom.x, leftTop.y);
+    glVertex2d(leftTop.x, leftTop.y);
+    glEnd();
 }
 
-/**************************************************/
-/*                                                */
-/*            public functions                    */
-/*                                                */
-/**************************************************/
 
-/* 修改要素的填充色 */
-void OpenGLWidget::setFillColor(int nLID, int nFID, int r, int g, int b, bool bUpdate/* = true*/)
-{
-	makeCurrent();
+/*********************************************/
+/*                                           */
+/*        (re)Send all geoMap to GPU         */
+/*                                           */
+/*********************************************/
 
-	openglLayerManager->setFeatureFillColor(nLID, nFID, r, g, b);
-
-	// 是否立即刷新
-	if (bUpdate)
-		update();
+void OpenGLWidget::onSendMapToGPU(bool bUpdate) {
+    for (auto iter = map->begin(); iter != map->end(); ++iter)
+        onSendLayerToGPU(*iter, false);
+    if (bUpdate)
+        update();
 }
 
 
@@ -552,93 +643,97 @@ void OpenGLWidget::setFillColor(int nLID, int nFID, int r, int g, int b, bool bU
 /*                                           */
 /*********************************************/
 
-void OpenGLWidget::sendDataToGPU(GeoRasterLayer* rasterLayer)
+void OpenGLWidget::onSendLayerToGPU(GeoLayer *layer, bool bUpdate) {
+    if (layer->getLayerType() == LayerType::kFeatureLayer)
+        onSendFeatureLayerToGPU(layer->toFeatureLayer(), bUpdate);
+    else
+        onSendRasterLayerToGPU(layer->toRasterLayer(), bUpdate);
+}
+
+void OpenGLWidget::onSendRasterLayerToGPU(GeoRasterLayer *rasterLayer, bool bUpdate)
 {
-	if (!rasterLayer)
-		return;
-	int nLID = rasterLayer->getLID();
+    if (!rasterLayer)
+        return;
 
-	makeCurrent();
+    makeCurrent();
 
-	// 栅格图层描述符
-	OpenglRasterLayerDescriptor* rasterLayerDesc = new OpenglRasterLayerDescriptor(nLID);
-	if (!openglLayerManager->addLayerDescriptor(rasterLayerDesc)) {
-		delete rasterLayerDesc;
-		return;
-	}
+    GeoExtent extent = rasterLayer->getExtent();
+    GeoRasterData* rasterData = rasterLayer->getData();
 
-	GeoExtent extent = rasterLayer->getExtent();
+    for (auto bandIter = rasterData->begin(); bandIter != rasterData->end(); ++bandIter) {
+        OpenglRasterDescriptor* rasterDesc = new OpenglRasterDescriptor();
+        (*bandIter)->setOpenglRasterDescriptor(rasterDesc);
 
-	// 栅格数据描述符
-	OpenglRasterDescriptor* rasterDesc = new OpenglRasterDescriptor();
-	rasterLayerDesc->rasterDesc = rasterDesc;
-	
-	// VAO
-	VertexArray* vao = new VertexArray();
-	rasterDesc->setVAO(vao);
+        auto& vao = rasterDesc->vao;
+        auto& vbo = rasterDesc->vbo;
+        auto& ibo = rasterDesc->ibo;
+        auto& texs = rasterDesc->texs;
 
-	// VBO
-	float vertices[] = {
-		// position					// texture coords
-		extent.maxX, extent.minY,   1.0f, 1.0f,
-		extent.maxX, extent.maxY,   1.0f, 0.0f,
-		extent.minX, extent.maxY,   0.0f, 0.0f,
-		extent.minX, extent.minY,   0.0f, 1.0f
-	};
-	VertexBuffer* vbo = new VertexBuffer(vertices, 16 * sizeof(float));
-	rasterDesc->setVBO(vbo);
+        // VAO
+        vao = new VertexArray();
 
-	// 告诉OpenGL数据是如何布局的
-	VertexBufferLayout layout;
-	layout.Push<float>(2);	// x, y
-	layout.Push<float>(2);	// coordX, coordY
-	vao->addBuffer(*vbo, layout);
+        // VBO
+        float vertices[] = {
+            // position					            // texture coords
+            float(extent.maxX), float(extent.minY),   1.0f, 1.0f,
+            float(extent.maxX), float(extent.maxY),   1.0f, 0.0f,
+            float(extent.minX), float(extent.maxY),   0.0f, 0.0f,
+            float(extent.minX), float(extent.minY),   0.0f, 1.0f
+        };
+        vbo = new VertexBuffer(vertices, 16 * sizeof(float));
 
-	// IBO
-	unsigned int indices[] = {
-		0, 1, 3,
-		1, 2, 3
-	};
-	IndexBuffer* ibo = new IndexBuffer(indices, 6, GL_TRIANGLES);
-	rasterDesc->setIBO(ibo);
+        // Data layout
+        VertexBufferLayout layout;
+        layout.Push<float>(2);	// x, y
+        layout.Push<float>(2);	// coordX, coordY
+        vao->addBuffer(*vbo, layout);
 
-	// Texture
-	GeoRasterData* rasterData = rasterLayer->getData();
-	int bandsCount = rasterData->getBandsCount();
-	for (int i = 0; i < bandsCount; ++i) {
-		GeoRasterBand* band = rasterData->getBand(i);
-		Texture* texture = nullptr;
-		switch (band->getDataType()) {
-		default:
-			break;
-		case utils::DataType::kFloat:
-		{
-			int count = band->width * band->height;
-			// 像素值规范化为 [0, 1]
-			float maxValue = *(std::max_element((float*)(band->pData), (float*)(band->pData) + count));
-			float* pixels = (float*)(band->pData);
-			float* buff = new float[count];
-			for (int i = 0; i < count; ++i) {
-				buff[i] = pixels[i] / maxValue;
-			}
-			texture = new Texture(buff, band->width, band->height,
-				GL_FLOAT, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT);
-			delete[] buff;
-			rasterDesc->addTex(texture);
-			break;
-		}
-		}
-	}
+        // IBO
+        unsigned int indices[] = {
+            0, 1, 3,
+            1, 2, 3
+        };
+        ibo = new IndexBuffer(indices, 6, GL_TRIANGLES);
 
-	/**** 设置MVP矩阵 ***/
-	if (map->getNumLayers() == 1)
-		updateMVP(true, false, true);
-	else
-		updateMVP(false, false, true);
+        // Texture
+        GeoRasterData* rasterData = rasterLayer->getData();
+        int bandsCount = rasterData->getBandsCount();
+        for (int i = 0; i < bandsCount; ++i) {
+            GeoRasterBand* band = rasterData->getBand(i);
+            Texture* texture = nullptr;
+            switch (band->getDataType()) {
+            default:
+                break;
+            case utils::DataType::kFloat:
+            {
+                int count = band->width * band->height;
+                // normalize to: [0, 1]
+                float maxValue = *(std::max_element((float*)(band->pData), (float*)(band->pData) + count));
+                float* pixels = (float*)(band->pData);
+                float* buff = new float[count];
+                for (int i = 0; i < count; ++i) {
+                    buff[i] = pixels[i] / maxValue;
+                }
+                texture = new Texture(buff, band->width, band->height,
+                                      GL_FLOAT, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT);
+                delete[] buff;
+                texs.push_back(texture);
+                break;
+            }
+            }
+        }
+    }
 
-	setMVP();
+    if (map->getNumLayers() == 1)
+        updateMVP(true, false, true);
+    else
+        updateMVP(false, false, true);
 
-	update();
+    setMVP();
+
+    if (bUpdate) {
+        update();
+    }
 }
 
 
@@ -648,423 +743,444 @@ void OpenGLWidget::sendDataToGPU(GeoRasterLayer* rasterLayer)
 /*                                           */
 /*********************************************/
 
-void OpenGLWidget::sendDataToGPU(GeoFeatureLayer* featureLayer)
+void OpenGLWidget::onSendFeatureLayerToGPU(GeoFeatureLayer* featureLayer, bool bUpdate)
 {
-	if (!featureLayer)
-		return;
-	int nLID = featureLayer->getLID();
+    if (!featureLayer)
+        return;
+    makeCurrent();
 
-	makeCurrent();
+    for (auto featureIter = featureLayer->begin(); featureIter != featureLayer->end(); ++featureIter) {
+        onSendFeatureToGPU(*featureIter);
+    }
 
-	clock_t start = clock();
+    if (map->getNumLayers() == 1)
+        updateMVP(true, false, true);
+    else
+        updateMVP(false, false, true);
 
-	GeoExtent extent = featureLayer->getExtent();
+    setMVP();
 
-	// 要素图层描述符
-	OpenglFeatureLayerDescriptor* featureLayerDesc = new OpenglFeatureLayerDescriptor(nLID);
-	if (!openglLayerManager->addLayerDescriptor(featureLayerDesc)) {
-		delete featureLayerDesc;
-		return;
-	}
-
-	// 随机填色
-	float r = utils::getRand(0.3f, 0.6f);
-	float g = utils::getRand(0.3f, 0.6f);
-	float b = utils::getRand(0.2f, 0.5f);
-
-	for (auto layerIt = featureLayer->begin(); layerIt != featureLayer->end(); ++layerIt) {
-		const auto& feature = *layerIt;
-		int nFID = feature->getFID();
-		GeometryType geomType = feature->getGeometryType();
-
-		// feature描述符
-		OpenglFeatureDescriptor* featureDesc = new OpenglFeatureDescriptor(nFID, geomType);
-		featureLayerDesc->addFeatureDesc(featureDesc);
-
-		switch (geomType) {
-		default:
-			break;
-		case kPoint:
-		{
-			GeoPoint* point = feature->getGeometry()->toPoint();
-			sendPointToGPU(point, r, g, b, featureDesc);
-			break;
-		}
-		case kPolygon:
-		{
-			GeoPolygon* polygon = feature->getGeometry()->toPolygon();
-			sendPolygonToGPU(polygon, r, g, b, featureDesc);
-			break;
-		}
-		case kLineString:
-		{
-			GeoLineString* lineString = feature->getGeometry()->toLineString();
-			sendLineStringToGPU(lineString, 0.0f, 0.0f, 0.0f, featureDesc);
-			break;
-		}
-		case kMultiPoint:
-		{
-			GeoMultiPoint* multiPoint = feature->getGeometry()->toMultiPoint();
-			sendMultiPointToGPU(multiPoint, 0.0f, 0.0f, 0.0f, featureDesc);
-			break;
-		}
-		case kMultiPolygon:
-		{
-			GeoMultiPolygon* multiPolygon = feature->getGeometry()->toMultiPolygon();
-			sendMultiPolygonToGPU(multiPolygon, r, g, b, featureDesc);
-			break;
-		}
-		case kMultiLineString:
-		{
-			GeoMultiLineString* multiLineString = feature->getGeometry()->toMultiLineString();
-			sendMultiLineStringToGPU(multiLineString, r, g, b, featureDesc);
-			break;
-		}
-		}
-	}
-
-	clock_t end = clock();
-
-	std::cout << "Triangulation time:" << triTime / 1e6 << "s" << std::endl;
-	std::cout << "Send data to gpu time:" << (end - start) / double(CLK_TCK) << "s" << std::endl;
-
-	/**** 设置MVP矩阵 ***/
-	if (map->getNumLayers() == 1)
-		updateMVP(true, false, true);
-	else
-		updateMVP(false, false, true);
-
-	setMVP();
-
-	update();
+    if (bUpdate) {
+        update();
+    }
 }
 
 
-void OpenGLWidget::sendPointToGPU(GeoPoint* point, float r, float g, float b, OpenglFeatureDescriptor*& featureDesc)
-{
-	// VAO
-	VertexArray* vao = new VertexArray();
-	featureDesc->setVAO(vao);
+void OpenGLWidget::onSendFeatureToGPU(GeoFeature *feature) {
+    GeometryType geomType = feature->getGeometryType();
 
-	// VBO
-	float vertices[5] = { point->getX(), point->getY(), r, g, b };
-	VertexBuffer* vbo = new VertexBuffer(vertices, 5 * sizeof(float));
-	featureDesc->setVBO(vbo);
+    float r, g, b;
+    feature->getColorF(r, g, b);
 
-	// IBO
-	unsigned int indices = 0;
-	IndexBuffer* ibo = new IndexBuffer(&indices, 1, GL_POINTS);
-	featureDesc->addIBO(ibo);
+    makeCurrent();
+    OpenglFeatureDescriptor* featureDesc = nullptr;
 
-	// 告诉OpenGL数据是如何布局的
-	VertexBufferLayout layout;
-	layout.Push<float>(2);	// x, y
-	layout.Push<float>(3);	// r, g, b
-	vao->addBuffer(*vbo, layout);
+    switch (geomType) {
+    default:
+        break;
+    case kPoint:
+    {
+        GeoPoint* point = feature->getGeometry()->toPoint();
+        featureDesc = sendPointToGPU(point, r, g, b);
+        break;
+    }
+    case kPolygon:
+    {
+        GeoPolygon* polygon = feature->getGeometry()->toPolygon();
+        featureDesc = sendPolygonToGPU(polygon, r, g, b);
+        break;
+    }
+    case kLineString:
+    {
+        GeoLineString* lineString = feature->getGeometry()->toLineString();
+        featureDesc = sendLineStringToGPU(lineString, r, g, b);
+        break;
+    }
+    case kMultiPoint:
+    {
+        GeoMultiPoint* multiPoint = feature->getGeometry()->toMultiPoint();
+        featureDesc = sendMultiPointToGPU(multiPoint, r, g, b);
+        break;
+    }
+    case kMultiPolygon:
+    {
+        GeoMultiPolygon* multiPolygon = feature->getGeometry()->toMultiPolygon();
+        featureDesc = sendMultiPolygonToGPU(multiPolygon, r, g, b);
+        break;
+    }
+    case kMultiLineString:
+    {
+        GeoMultiLineString* multiLineString = feature->getGeometry()->toMultiLineString();
+        featureDesc = sendMultiLineStringToGPU(multiLineString, r, g, b);
+        break;
+    }
+    }
+
+    feature->setOpenglFeatureDescriptor(featureDesc);
 }
 
-void OpenGLWidget::sendMultiPointToGPU(GeoMultiPoint* mutliPoint, float r, float g, float b, OpenglFeatureDescriptor*& featureDesc)
+OpenglFeatureDescriptor* OpenGLWidget::sendPointToGPU(GeoPoint* point, float r, float g, float b)
 {
-	int pointsCount = mutliPoint->getNumGeometries();
+    OpenglFeatureDescriptor* featureDesc = new OpenglFeatureDescriptor(5);
+    auto& vao = featureDesc->vao;
+    auto& vbo = featureDesc->vbo;
+    auto& ibos = featureDesc->ibos;
 
-	// VAO
-	VertexArray* vao = new VertexArray();
-	featureDesc->setVAO(vao);
+    // VAO
+    vao = new VertexArray();
 
-	// VBO
-	float* vertices = new float[pointsCount * 5 * sizeof(float)];
-	int index = 0;
-	GeoPoint* point;
-	for (int i = 0; i < pointsCount; ++i) {
-		point = mutliPoint->getGeometry(i)->toPoint();
-		vertices[i * 5] = point->getX();
-		vertices[i * 5 + 1] = point->getY();
-		vertices[i * 5 + 2] = r;
-		vertices[i * 5 + 3] = g;
-		vertices[i * 5 + 4] = b;
-	}
-	VertexBuffer* vbo = new VertexBuffer(vertices, pointsCount * 5 * sizeof(float));
-	featureDesc->setVBO(vbo);
+    // VBO
+    float vertices[5] = { float(point->getX()), float(point->getY()), r, g, b };
+    vbo = new VertexBuffer(vertices, 5 * sizeof(float));
 
-	// IBO
-	unsigned int* indices = utils::newContinuousNumber(0, pointsCount);
-	IndexBuffer* ibo = new IndexBuffer(indices, pointsCount, GL_POINTS);
-	delete[] vertices;
-	delete[] indices;
+    // IBO
+    unsigned int indices = 0;
+    IndexBuffer* ibo = new IndexBuffer(&indices, 1, GL_POINTS);
+    ibos.emplace_back(ibo);
 
-	// 告诉OpenGL数据是如何布局的
-	VertexBufferLayout layout;
-	layout.Push<float>(2);	// x, y
-	layout.Push<float>(3);	// r, g, b
-	vao->addBuffer(*vbo, layout);
+    // Data layout
+    VertexBufferLayout layout;
+    layout.Push<float>(2);	// x, y
+    layout.Push<float>(3);	// r, g, b
+    vao->addBuffer(*vbo, layout);
+
+    return featureDesc;
 }
 
-void OpenGLWidget::sendLineStringToGPU(GeoLineString* lineString, float r, float g, float b, OpenglFeatureDescriptor*& featureDesc)
+OpenglFeatureDescriptor* OpenGLWidget::sendMultiPointToGPU(GeoMultiPoint* mutliPoint, float r, float g, float b)
 {
-	int pointsCount = lineString->getNumPoints();
+    OpenglFeatureDescriptor* featureDesc = new OpenglFeatureDescriptor(5);
+    int pointsCount = mutliPoint->getNumGeometries();
+    auto& vao = featureDesc->vao;
+    auto& vbo = featureDesc->vbo;
+    auto& ibos = featureDesc->ibos;
 
-	// VAO
-	VertexArray* vao = new VertexArray();
-	featureDesc->setVAO(vao);
-	
-	// VBO
-	float* vertices = new float[pointsCount * 5];
-	for (int i = 0; i < pointsCount; ++i) {
-		vertices[i * 5] = lineString->getX(i);
-		vertices[i * 5 + 1] = lineString->getY(i);
-		vertices[i * 5 + 2] = r;
-		vertices[i * 5 + 3] = g;
-		vertices[i * 5 + 4] = b;
-	}
-	VertexBuffer* vbo = new VertexBuffer(vertices, 5 * sizeof(float) * pointsCount);
-	featureDesc->setVBO(vbo);
+    // VAO
+    vao = new VertexArray();
 
-	// IBO
-	unsigned int* indices = utils::newContinuousNumber(0, pointsCount);
-	IndexBuffer* ibo = new IndexBuffer(indices, pointsCount, GL_LINE_STRIP);
-	featureDesc->addIBO(ibo);
-	delete[] vertices;
-	delete[] indices;
+    // VBO
+    float* vertices = new float[pointsCount * 5 * sizeof(float)];
+    GeoPoint* point;
+    for (int i = 0; i < pointsCount; ++i) {
+        point = mutliPoint->getGeometry(i)->toPoint();
+        vertices[i * 5] = point->getX();
+        vertices[i * 5 + 1] = point->getY();
+        vertices[i * 5 + 2] = r;
+        vertices[i * 5 + 3] = g;
+        vertices[i * 5 + 4] = b;
+    }
+    vbo = new VertexBuffer(vertices, pointsCount * 5 * sizeof(float));
 
-	// 告诉OpenGL数据是如何布局的
-	VertexBufferLayout layout;
-	layout.Push<float>(2);	// x, y
-	layout.Push<float>(3);	// r, g, b
-	vao->addBuffer(*vbo, layout);
+    // IBO
+    unsigned int* indices = utils::newContinuousNumber(0, pointsCount);
+    IndexBuffer* ibo = new IndexBuffer(indices, pointsCount, GL_POINTS);
+    ibos.emplace_back(ibo);
+    delete[] vertices;
+    delete[] indices;
+
+    // Data layout
+    VertexBufferLayout layout;
+    layout.Push<float>(2);	// x, y
+    layout.Push<float>(3);	// r, g, b
+    vao->addBuffer(*vbo, layout);
+
+    return featureDesc;
 }
 
-void OpenGLWidget::sendMultiLineStringToGPU(GeoMultiLineString* multiLineString, float r, float g, float b, OpenglFeatureDescriptor*& featureDesc)
+OpenglFeatureDescriptor* OpenGLWidget::sendLineStringToGPU(GeoLineString* lineString, float r, float g, float b)
 {
-	int pointsCount = multiLineString->getNumPoints();
-	int linesCount = multiLineString->getNumGeometries();
+    OpenglFeatureDescriptor* featureDesc = new OpenglFeatureDescriptor(5);
+    int pointsCount = lineString->getNumPoints();
+    auto& vao = featureDesc->vao;
+    auto& vbo = featureDesc->vbo;
+    auto& ibos = featureDesc->ibos;
 
-	// VAO
-	VertexArray* vao = new VertexArray();
-	featureDesc->setVAO(vao);
-	
-	// VBO
-	VertexBuffer* vbo = new VertexBuffer(nullptr, 5 * sizeof(float) * pointsCount);
-	featureDesc->setVBO(vbo);
+    // VAO
+    vao = new VertexArray();
 
-	int sizeOffset = 0;
-	int countOffset = 0;
+    // VBO
+    float* vertices = new float[pointsCount * 5];
+    for (int i = 0; i < pointsCount; ++i) {
+        vertices[i * 5] = lineString->getX(i);
+        vertices[i * 5 + 1] = lineString->getY(i);
+        vertices[i * 5 + 2] = r;
+        vertices[i * 5 + 3] = g;
+        vertices[i * 5 + 4] = b;
+    }
+    vbo = new VertexBuffer(vertices, 5 * sizeof(float) * pointsCount);
 
-	for (int i = 0; i < linesCount; ++i) {
-		GeoLineString* lineString = multiLineString->getLineString(i);
+    // IBO
+    unsigned int* indices = utils::newContinuousNumber(0, pointsCount);
+    IndexBuffer* ibo = new IndexBuffer(indices, pointsCount, GL_LINE_STRIP);
+    ibos.emplace_back(ibo);
+    delete[] vertices;
+    delete[] indices;
 
-		float* vertices = new float[pointsCount * 5];
-		for (int i = 0; i < pointsCount; ++i) {
-			vertices[i * 5] = lineString->getX(i);
-			vertices[i * 5 + 1] = lineString->getY(i);
-			vertices[i * 5 + 2] = r;
-			vertices[i * 5 + 3] = g;
-			vertices[i * 5 + 4] = b;
-		}
-		vbo->addSubData(vertices, sizeOffset, pointsCount * 5 * sizeof(float));
+    // Data layout
+    VertexBufferLayout layout;
+    layout.Push<float>(2);	// x, y
+    layout.Push<float>(3);	// r, g, b
+    vao->addBuffer(*vbo, layout);
 
-		// IBO
-		unsigned int* indices = utils::newContinuousNumber(countOffset, pointsCount);
-		IndexBuffer* ibo = new IndexBuffer(indices, pointsCount, GL_LINE_STRIP);
-		featureDesc->addIBO(ibo);
-		sizeOffset += pointsCount * 5 * sizeof(float);
-		countOffset += pointsCount;
-		delete[] vertices;
-		delete[] indices;
-	}
-
-	// 告诉OpenGL数据是如何布局的
-	VertexBufferLayout layout;
-	layout.Push<float>(2);	// x, y
-	layout.Push<float>(3);	// r, g, b
-	vao->addBuffer(*vbo, layout);
+    return featureDesc;
 }
 
-void OpenGLWidget::sendPolygonToGPU(GeoPolygon* geoPolygon, float r,float g, float b,
-	OpenglFeatureDescriptor*& featureDesc)
+OpenglFeatureDescriptor* OpenGLWidget::sendMultiLineStringToGPU(GeoMultiLineString* multiLineString, float r, float g, float b)
 {
-	int polygonPointsCount = geoPolygon->getNumPoints();
-	int interiorRingsCount = geoPolygon->getInteriorRingsCount();
+    OpenglFeatureDescriptor* featureDesc = new OpenglFeatureDescriptor(5);
+    int pointsCount = multiLineString->getNumPoints();
+    int linesCount = multiLineString->getNumGeometries();
+    auto& vao = featureDesc->vao;
+    auto& vbo = featureDesc->vbo;
+    auto& ibos = featureDesc->ibos;
 
-	// VAO
-	VertexArray* vao = new VertexArray();
-	vao->reserve(interiorRingsCount + 1);
-	featureDesc->setVAO(vao);
+    // VAO
+    vao = new VertexArray();
 
-	float* vertices = new float[polygonPointsCount * 5 * sizeof(float)];
-	int iStride = 0;
+    // VBO
+    vbo = new VertexBuffer(nullptr, 5 * sizeof(float) * pointsCount);
 
-	using Point = std::array<double, 2>;
-	std::vector<std::vector<Point>> polygon;
+    int sizeOffset = 0;
+    int countOffset = 0;
 
-	// 外环
-	GeoLinearRing* geoExteriorRing = geoPolygon->getExteriorRing();
-	int exteriorRingPointsCount = geoExteriorRing->getNumPoints();
-	vao->setStride(iStride++, exteriorRingPointsCount);
-	std::vector<Point> exteriorRing;
-	exteriorRing.reserve(exteriorRingPointsCount);
-	GeoRawPoint rawPoint;
-	int index = 0;
-	for (int i = 0; i < exteriorRingPointsCount; ++i) {
-		geoExteriorRing->getRawPoint(i, &rawPoint);
-		exteriorRing.push_back({ rawPoint.x, rawPoint.y });
-		vertices[index] = rawPoint.x;
-		vertices[index + 1] = rawPoint.y;
-		vertices[index + 2] = r;
-		vertices[index + 3] = g;
-		vertices[index + 4] = b;
-		index += 5;
-	}
-	polygon.emplace_back(exteriorRing);
+    for (int i = 0; i < linesCount; ++i) {
+        GeoLineString* lineString = multiLineString->getLineString(i);
 
-	// 内环
-	for (int j = 0; j < interiorRingsCount; ++j) {
-		const auto& geoInteriorRing = geoPolygon->getInteriorRing(j);
-		int interiorRingPointsCount = geoInteriorRing->getNumPoints();
-		vao->setStride(iStride++, interiorRingPointsCount);
-		std::vector<Point> interiorRing;
-		interiorRing.reserve(interiorRingPointsCount);
-		for (int k = 0; k < interiorRingPointsCount; ++k) {
-			geoInteriorRing->getRawPoint(k, &rawPoint);
-			exteriorRing.push_back({ rawPoint.x, rawPoint.y });
-			vertices[index] = rawPoint.x;
-			vertices[index + 1] = rawPoint.y;
-			vertices[index + 2] = r;
-			vertices[index + 3] = g;
-			vertices[index + 4] = b;
-			index += 5;
-		}
-		polygon.emplace_back(interiorRing);
-	}
+        float* vertices = new float[pointsCount * 5];
+        for (int i = 0; i < pointsCount; ++i) {
+            vertices[i * 5] = lineString->getX(i);
+            vertices[i * 5 + 1] = lineString->getY(i);
+            vertices[i * 5 + 2] = r;
+            vertices[i * 5 + 3] = g;
+            vertices[i * 5 + 4] = b;
+        }
+        vbo->addSubData(vertices, sizeOffset, pointsCount * 5 * sizeof(float));
 
-	auto start = std::chrono::system_clock::now();
+        // IBO
+        unsigned int* indices = utils::newContinuousNumber(countOffset, pointsCount);
+        IndexBuffer* ibo = new IndexBuffer(indices, pointsCount, GL_LINE_STRIP);
+        ibos.push_back(ibo);
+        sizeOffset += pointsCount * 5 * sizeof(float);
+        countOffset += pointsCount;
+        delete[] vertices;
+        delete[] indices;
+    }
 
-	// 三角剖分
-	std::vector<unsigned int> indices = mapbox::earcut<unsigned int>(polygon);
-	//std::reverse(indices.begin(), indices.end());
+    // Data layout
+    VertexBufferLayout layout;
+    layout.Push<float>(2);	// x, y
+    layout.Push<float>(3);	// r, g, b
+    vao->addBuffer(*vbo, layout);
 
-	auto end = std::chrono::system_clock::now();
-	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-
-	triTime += double(duration.count());
-
-	// VBO
-	VertexBuffer* vbo = new VertexBuffer(vertices, polygonPointsCount * 5 * sizeof(float));
-	featureDesc->setVBO(vbo);
-
-	// IBO
-	IndexBuffer* ibo = new IndexBuffer(&indices[0], indices.size(), GL_TRIANGLES);
-	featureDesc->addIBO(ibo);
-	delete[] vertices;
-
-	// 告诉OpenGL数据是如何布局的
-	VertexBufferLayout layout;
-	layout.Push<float>(2);	// x, y
-	layout.Push<float>(3);	// r, g, b
-	vao->addBuffer(*vbo, layout);
+    return featureDesc;
 }
 
-
-void OpenGLWidget::sendMultiPolygonToGPU(GeoMultiPolygon* multiPolygon, float r,float g, float b, 
-	OpenglFeatureDescriptor*& featureDesc)
+OpenglFeatureDescriptor* OpenGLWidget::sendPolygonToGPU(GeoPolygon* geoPolygon, float r,float g, float b)
 {
-	int pointsCount = multiPolygon->getNumPoints();
-	int polygonCount = multiPolygon->getNumGeometries();
-	int linearRingsCount = multiPolygon->getNumLinearRings();
+    OpenglFeatureDescriptor* featureDesc = new OpenglFeatureDescriptor(8);
+    int polygonPointsCount = geoPolygon->getNumPoints();
+    int interiorRingsCount = geoPolygon->getInteriorRingsCount();
+    auto& vao = featureDesc->vao;
+    auto& vbo = featureDesc->vbo;
+    auto& ibos = featureDesc->ibos;
 
-	// VAO
-	VertexArray* vao = new VertexArray();
-	vao->reserve(linearRingsCount);
-	featureDesc->setVAO(vao);
+    // VAO
+    vao = new VertexArray();
+    vao->reserve(interiorRingsCount + 1);
 
-	int sizeOffset = 0;
-	int countOffset = 0;
-	int subDataSize = 0;
+    float* vertices = new float[polygonPointsCount * 8 * sizeof(float)];
+    int iStride = 0;
 
-	// VBO，这里只是分配空间，没有发送数据
-	VertexBuffer* vbo = new VertexBuffer(nullptr, pointsCount * 5 * sizeof(float));
-	featureDesc->setVBO(vbo);
-	int iStride = 0;
+    using Point = std::array<double, 2>;
+    std::vector<std::vector<Point>> polygon;
 
-	for (int i = 0; i < polygonCount; ++i) {
-		GeoPolygon* geoPolygon = multiPolygon->getPolygon(i);
-		int polygonPointsCount = geoPolygon->getNumPoints();
-		int interiorRingsCount = geoPolygon->getInteriorRingsCount();
+    // Exterior ring
+    GeoLinearRing* geoExteriorRing = geoPolygon->getExteriorRing();
+    int exteriorRingPointsCount = geoExteriorRing->getNumPoints();
+    vao->setStride(iStride++, exteriorRingPointsCount);
+    std::vector<Point> exteriorRing;
+    exteriorRing.reserve(exteriorRingPointsCount);
+    GeoRawPoint rawPoint;
+    int index = 0;
+    for (int i = 0; i < exteriorRingPointsCount; ++i) {
+        geoExteriorRing->getRawPoint(i, &rawPoint);
+        exteriorRing.push_back({ rawPoint.x, rawPoint.y });
+        // position
+        vertices[index] = rawPoint.x;
+        vertices[index + 1] = rawPoint.y;
+        // fill color
+        vertices[index + 2] = r;
+        vertices[index + 3] = g;
+        vertices[index + 4] = b;
+        // border color
+        // default: black border
+        vertices[index + 5] = 0.0f;
+        vertices[index + 6] = 0.0f;
+        vertices[index + 7] = 0.0f;
+        index += 8;
+    }
+    polygon.emplace_back(exteriorRing);
 
-		float* vertices = new float[polygonPointsCount * 5 * sizeof(float)];
+    // Interior rings
+    for (int j = 0; j < interiorRingsCount; ++j) {
+        const auto& geoInteriorRing = geoPolygon->getInteriorRing(j);
+        int interiorRingPointsCount = geoInteriorRing->getNumPoints();
+        vao->setStride(iStride++, interiorRingPointsCount);
+        std::vector<Point> interiorRing;
+        interiorRing.reserve(interiorRingPointsCount);
+        for (int k = 0; k < interiorRingPointsCount; ++k) {
+            geoInteriorRing->getRawPoint(k, &rawPoint);
+            exteriorRing.push_back({ rawPoint.x, rawPoint.y });
+            // position
+            vertices[index] = rawPoint.x;
+            vertices[index + 1] = rawPoint.y;
+            // fill color
+            vertices[index + 2] = r;
+            vertices[index + 3] = g;
+            vertices[index + 4] = b;
+            // border color
+            // default: black border
+            vertices[index + 5] = 0.0f;
+            vertices[index + 6] = 0.0f;
+            vertices[index + 7] = 0.0f;
+            index += 8;
+        }
+        polygon.emplace_back(interiorRing);
+    }
 
-		using Point = std::array<double, 2>;
-		std::vector<std::vector<Point>> polygon;
+    // Triangulation
+    std::vector<unsigned int> indices = mapbox::earcut<unsigned int>(polygon);
+    //std::reverse(indices.begin(), indices.end());
 
-		// 外环
-		GeoLinearRing* geoExteriorRing = geoPolygon->getExteriorRing();
-		int exteriorRingPointsCount = geoExteriorRing->getNumPoints();
-		vao->setStride(iStride++, exteriorRingPointsCount);
-		std::vector<Point> exteriorRing;
-		exteriorRing.reserve(exteriorRingPointsCount);
-		GeoRawPoint rawPoint;
-		int index = 0;
-		for (int i = 0; i < exteriorRingPointsCount; ++i) {
-			geoExteriorRing->getRawPoint(i, &rawPoint);
-			exteriorRing.push_back({ rawPoint.x, rawPoint.y });
-			vertices[index] = rawPoint.x;
-			vertices[index + 1] = rawPoint.y;
-			vertices[index + 2] = r;
-			vertices[index + 3] = g;
-			vertices[index + 4] = b;
-			index += 5;
-		}
-		polygon.emplace_back(exteriorRing);
+    // VBO
+    vbo = new VertexBuffer(vertices, polygonPointsCount * 8 * sizeof(float));
 
-		// 内环
-		for (int j = 0; j < interiorRingsCount; ++j) {
-			const auto& geoInteriorRing = geoPolygon->getInteriorRing(j);
-			int interiorRingPointsCount = geoInteriorRing->getNumPoints();
-			vao->setStride(iStride++, interiorRingPointsCount);
-			std::vector<Point> interiorRing;
-			interiorRing.reserve(interiorRingPointsCount);
-			for (int k = 0; k < interiorRingPointsCount; ++k) {
-				geoInteriorRing->getRawPoint(k, &rawPoint);
-				exteriorRing.push_back({ rawPoint.x, rawPoint.y });
-				vertices[index] = rawPoint.x;
-				vertices[index + 1] = rawPoint.y;
-				vertices[index + 2] = r;
-				vertices[index + 3] = g;
-				vertices[index + 4] = b;
-				index += 5;
-			}
-			polygon.emplace_back(interiorRing);
-		}
+    // IBO
+    IndexBuffer* ibo = new IndexBuffer(&indices[0], indices.size(), GL_TRIANGLES);
+    ibos.push_back(ibo);
+    delete[] vertices;
 
-		auto start = std::chrono::system_clock::now();
+    // Data layout
+    VertexBufferLayout layout;
+    layout.Push<float>(2);	// x, y
+    layout.Push<float>(3);	// Fill   color: r, g, b
+    layout.Push<float>(3);	// Border color: r, g, b
+    vao->addBuffer(*vbo, layout);
 
-		// 三角剖分
-		std::vector<unsigned int> indices = mapbox::earcut<unsigned int>(polygon);
-		//std::reverse(indices.begin(), indices.end());
-
-		auto end = std::chrono::system_clock::now();
-		auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-
-		triTime += double(duration.count());
-
-		if (countOffset > 0)
-			std::for_each(indices.begin(), indices.end(), [&countOffset](auto& value) {value += countOffset; });
-
-		// VBO
-		vbo->addSubData(vertices, sizeOffset, polygonPointsCount * 5 * sizeof(float));
-
-		// IBO
-		IndexBuffer* ibo = new IndexBuffer(&indices[0], indices.size(), GL_TRIANGLES);
-		featureDesc->addIBO(ibo);
-		sizeOffset += polygonPointsCount * 5 * sizeof(float);
-		countOffset += polygonPointsCount;
-		delete[] vertices;
-	}
-
-	// 告诉OpenGL数据是如何布局的
-	VertexBufferLayout layout;
-	layout.Push<float>(2);	// x, y
-	layout.Push<float>(3);	// r, g, b
-	vao->addBuffer(*vbo, layout);
+    return featureDesc;
 }
 
 
+OpenglFeatureDescriptor* OpenGLWidget::sendMultiPolygonToGPU(GeoMultiPolygon* multiPolygon, float r,float g, float b)
+{
+    OpenglFeatureDescriptor* featureDesc = new OpenglFeatureDescriptor(8);
+    int pointsCount = multiPolygon->getNumPoints();
+    int polygonCount = multiPolygon->getNumGeometries();
+    int linearRingsCount = multiPolygon->getNumLinearRings();
+    auto& vao = featureDesc->vao;
+    auto& vbo = featureDesc->vbo;
+    auto& ibos = featureDesc->ibos;
+
+    // VAO
+    vao = new VertexArray();
+    vao->reserve(linearRingsCount);
+
+    int sizeOffset = 0;
+    int countOffset = 0;
+
+    // VBO
+    // Just allocate memory, no data was send.
+    vbo = new VertexBuffer(nullptr, pointsCount * 8 * sizeof(float));
+    int iStride = 0;
+
+    for (int i = 0; i < polygonCount; ++i) {
+        GeoPolygon* geoPolygon = multiPolygon->getPolygon(i);
+        int polygonPointsCount = geoPolygon->getNumPoints();
+        int interiorRingsCount = geoPolygon->getInteriorRingsCount();
+
+        float* vertices = new float[polygonPointsCount * 5 * sizeof(float)];
+
+        using Point = std::array<double, 2>;
+        std::vector<std::vector<Point>> polygon;
+
+        // Exterior ring
+        GeoLinearRing* geoExteriorRing = geoPolygon->getExteriorRing();
+        int exteriorRingPointsCount = geoExteriorRing->getNumPoints();
+        vao->setStride(iStride++, exteriorRingPointsCount);
+        std::vector<Point> exteriorRing;
+        exteriorRing.reserve(exteriorRingPointsCount);
+        GeoRawPoint rawPoint;
+        int index = 0;
+        for (int i = 0; i < exteriorRingPointsCount; ++i) {
+            geoExteriorRing->getRawPoint(i, &rawPoint);
+            exteriorRing.push_back({ rawPoint.x, rawPoint.y });
+            // position
+            vertices[index] = rawPoint.x;
+            vertices[index + 1] = rawPoint.y;
+            // fill color
+            vertices[index + 2] = r;
+            vertices[index + 3] = g;
+            vertices[index + 4] = b;
+            // border color
+            // default: black border
+            vertices[index + 5] = 0.0f;
+            vertices[index + 6] = 0.0f;
+            vertices[index + 7] = 0.0f;
+            index += 8;
+        }
+        polygon.emplace_back(exteriorRing);
+
+        // Interior rings
+        for (int j = 0; j < interiorRingsCount; ++j) {
+            const auto& geoInteriorRing = geoPolygon->getInteriorRing(j);
+            int interiorRingPointsCount = geoInteriorRing->getNumPoints();
+            vao->setStride(iStride++, interiorRingPointsCount);
+            std::vector<Point> interiorRing;
+            interiorRing.reserve(interiorRingPointsCount);
+            for (int k = 0; k < interiorRingPointsCount; ++k) {
+                geoInteriorRing->getRawPoint(k, &rawPoint);
+                exteriorRing.push_back({ rawPoint.x, rawPoint.y });
+                // position
+                vertices[index] = rawPoint.x;
+                vertices[index + 1] = rawPoint.y;
+                // fill color
+                vertices[index + 2] = r;
+                vertices[index + 3] = g;
+                vertices[index + 4] = b;
+                // border color
+                // default: black border
+                vertices[index + 5] = 0.0f;
+                vertices[index + 6] = 0.0f;
+                vertices[index + 7] = 0.0f;
+                index += 8;
+            }
+            polygon.emplace_back(interiorRing);
+        }
+
+        // Triangulation
+        std::vector<unsigned int> indices = mapbox::earcut<unsigned int>(polygon);
+        //std::reverse(indices.begin(), indices.end());
+
+        if (countOffset > 0)
+            std::for_each(indices.begin(), indices.end(), [&countOffset](auto& value) {value += countOffset; });
+
+        // VBO
+        vbo->addSubData(vertices, sizeOffset, polygonPointsCount * 8 * sizeof(float));
+
+        // IBO
+        IndexBuffer* ibo = new IndexBuffer(&indices[0], indices.size(), GL_TRIANGLES);
+        ibos.push_back(ibo);
+        sizeOffset += polygonPointsCount * 8 * sizeof(float);
+        countOffset += polygonPointsCount;
+        delete[] vertices;
+    }
+
+    // Data layout
+    VertexBufferLayout layout;
+    layout.Push<float>(2);	// x, y
+    layout.Push<float>(3);	// Fill   color: r, g, b
+    layout.Push<float>(3);	// Border color: r, g, b
+    vao->addBuffer(*vbo, layout);
+
+    return featureDesc;
+}

@@ -1,7 +1,7 @@
 /*******************************************************
 ** class name:  ViewLog
 **
-** description: 日志窗口
+** description: Show logs
 **
 ** last change: 2020-01-02
 *******************************************************/
@@ -17,43 +17,44 @@
 #include <QTextDocument>
 #include <QColor>
 
+#include <cstring>
+
 struct LogLevelColor {
-	void set(const char* levelStr, const QColor& colorIn) {
-		sprintf_s(level, 10, levelStr, strlen(levelStr));
-		color = colorIn;
-	}
-	char level[10] = { 0 };
-	QColor color;
+    void set(const char* levelStr, const QColor& colorIn) {
+        snprintf(level, 12, levelStr, strlen(levelStr));
+        color = colorIn;
+    }
+    char level[12] = { 0 };
+    QColor color;
 };
 
 
 class ViewLog : public QDialog
 {
-	Q_OBJECT
+    Q_OBJECT
 public:
-	ViewLog(QWidget *parent);
-	~ViewLog();
+    ViewLog(QWidget *parent);
+    ~ViewLog();
 
-	// 布局
-	void setupLayout();
+    // layout
+    void setupLayout();
 
-	// 高亮 Error、warning、trace、info、debug等日志级别
-	void highlightText();
+    // Highlight log leve: Error, warning, trace, info, debug
+    void highlightText();
 
-	// 读取日志文件
-	void readLogFile();
+    void readLogFile();
 
 public slots:
-	// 每500ms检查一次是否有日志写入
-	void handleTimeout();
+    // check log file every 500ms
+    void handleTimeout();
 
 public:
-	QTextEdit* logText;
+    QTextEdit* logText;
 
 private:
-	QTimer* timer;
-	QFileInfo logFileInfo;
-	LogLevelColor levelColor[6];
-	QDateTime lastModifiedTime;
-	const char* logFilePath = "logs/basic-logger.txt";
+    QTimer* timer;
+    QFileInfo logFileInfo;
+    LogLevelColor levelColor[6];
+    QDateTime lastModifiedTime;
+    const char* logFilePath = "logs/basic-logger.txt";
 };

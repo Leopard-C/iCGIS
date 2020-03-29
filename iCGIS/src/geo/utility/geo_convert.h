@@ -1,15 +1,16 @@
-/*******************************************************
-** description: 转换GDAL的数据对象到本项目数据对象
+/**********************************************************************************
+** description: Convert data structure in GDAL to this program's data structure
 **
-** last change: 2020-01-02
-*******************************************************/
+** last change: 2020-02-06
+***********************************************************************************/
 #pragma once
 
-#include "memoryleakdetect.h"
 #include <gdal/ogrsf_frmts.h>
 
-enum GeometryType;
-enum GeoFieldType;
+#include "util/memoryleakdetect.h"
+#include "geo/geometry/geogeometry.h"
+#include "geo/map/geofielddefn.h"
+
 class GeoMap;
 class GeoFeatureLayer;
 class GeoFeature;

@@ -1,7 +1,7 @@
 /*******************************************************
 ** class name:  GeoRasterLayerProperty
 **
-** description: 栅格图层的属性
+** description: Properties of Raster layer
 **
 ** last change: 2020-01-02
 *******************************************************/
@@ -14,11 +14,11 @@
 
 class GeoRasterLayerProperty {
 public:
-	GeoRasterLayerProperty() {}
-	~GeoRasterLayerProperty() {}
+    GeoRasterLayerProperty() {}
+    ~GeoRasterLayerProperty() {}
 
-	bool visable = true;		// 是否可见（显示）
-	int id = 0;
-	QString name;
-	GeoExtent extent;
+    bool visible = true;
+    int id = 0;
+    QString name;
+    GeoExtent extent;
 };

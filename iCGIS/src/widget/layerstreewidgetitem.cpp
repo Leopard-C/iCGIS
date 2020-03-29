@@ -1,7 +1,6 @@
 #include "layerstreewidgetitem.h"
 
 
-
 LayersTreeWidgetItem::LayersTreeWidgetItem(int type /*= 0*/)
 	: QTreeWidgetItem(type)
 {

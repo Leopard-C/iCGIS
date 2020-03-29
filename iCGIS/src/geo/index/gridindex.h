@@ -1,7 +1,7 @@
 /*******************************************************
 ** class name:  GridIndex
 **
-** description: 空间网格索引
+** description: Saticl Grid index
 **
 ** last change: 2020-01-02
 *******************************************************/
@@ -13,29 +13,38 @@
 
 class GridIndex : public SpatialIndex {
 public:
-	GridIndex();
-	~GridIndex();
+    GridIndex();
+    ~GridIndex();
 
-	/* 预分配网格数量 */
-	void reserve(int numGrids) { grids.reserve(numGrids); }
+    // Reserve the number of grids
+    void reserve(int numGrids) { grids.reserve(numGrids); }
 
-	/* 添加网格 */
-	void addGrid(Grid* grid) { grids.push_back(grid); }
+    // Add grids
+    void addGrid(Grid* grid) { grids.push_back(grid); }
 
-	/* 清空索引 */
-	void clear();
+    // Clear all grids
+    void clear();
 
-	/* 获取格网数量 */
-	int getNumGrids() const { return grids.size(); }
+    // Get the number of grids
+    int getNumGrids() const { return grids.size(); }
 
-	/* 查询格网 */
-	void queryGrids(double x, double y, Grid*& gridResult);	// 点查询
-	void queryGrids(const GeoExtent& extent, std::vector<Grid*>& gridsResult);	// 矩形框查询
+    // Query grid
+    // Get the grid which contains the point
+    void queryGrids(double x, double y, Grid*& gridResult);
 
-	/* 查询空间要素 */
-	void queryFeatures(double x, double y, GeoFeature*& featureResult) override;
-	void queryFeatures(const GeoExtent& extent, std::vector<GeoFeature*>& featuresResult) override;
+    // Get the grids that intersec the rectangle(extent)
+    void queryGrids(const GeoExtent& extent, std::vector<Grid*>& gridsResult);
+
+    // Query
+    // Point query
+    // construct a square
+    // x, y:        square's central point
+    // halfEdge:    a half of rectangle's length of side
+    void queryFeature(double x, double y, double halfEdge, GeoFeature*& featureResult) override;
+
+    // Box query
+    void queryFeatures(const GeoExtent& extent, std::vector<GeoFeature*>& featuresResult) override;
 
 private:
-	std::vector<Grid*> grids;
+    std::vector<Grid*> grids;
 };

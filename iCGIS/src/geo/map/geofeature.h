@@ -1,123 +1,160 @@
 /*******************************************************************
 ** class name:  GeoFeature
 **
-** description: 要素类，一个要素由一个Geometry和若干字段值组成
+** description: Feature = Geometry + FieldValues
 **
-** last change: 2020-01-02
+** last change: 2020-03-25
 ********************************************************************/
 #pragma once
 
 #include "geo/geometry/geogeometry.h"
 #include "geo/map/geofielddefn.h"
+#include "util/utility.h"
+
 #include <vector>
+#include <QColor>
 
 class GeoFeatureLayer;
-
+class OpenglFeatureDescriptor;
 
 class GeoFeature {
 public:
-	// 构造GeoFeature对象时要指定所属的图层
-	// 或者指定表头定义（即GeoField指针数组）
-	GeoFeature(GeoFeatureLayer* layerParent);
-	GeoFeature(int nFID, GeoFeatureLayer* layerParent);
-	GeoFeature(std::vector<GeoFieldDefn*>* fieldDefnsIn);
-	GeoFeature(int nFID, std::vector<GeoFieldDefn*>* fieldDefnsIn);
-	~GeoFeature();
+    /* When construct an object  of GeoFeature, the parent layer is required
+    ** or pass it the defination of attribute table's header */
+    GeoFeature(GeoFeatureLayer* layerParent);
+    GeoFeature(int nFID, GeoFeatureLayer* layerParent);
+    GeoFeature(std::vector<GeoFieldDefn*>* fieldDefnsIn);
+    GeoFeature(int nFID, std::vector<GeoFieldDefn*>* fieldDefnsIn);
+    GeoFeature(const GeoFeature& rhs, std::vector<GeoFieldDefn*>* fieldDefnsIn);
+    GeoFeature() {}  // shouldn't use this constructor!!! Just for compiling
+    ~GeoFeature();
 
-	/********************************************
-	**
-	**	geometry
-	**
-	*********************************************/
-	void setGeometry(GeoGeometry* geomIn);
-	GeoGeometry* getGeometry() const { return geom; }
-	GeometryType getGeometryType() const;
+    /********************************************
+    **
+    **	geometry
+    **
+    *********************************************/
+    void setGeometry(GeoGeometry* geomIn);
+    GeoGeometry* getGeometry() const { return geom; }
+    GeometryType getGeometryType() const;
+    void offset(double xOffset, double yOffset);
+    void rotate(double angle);
+    void rotate(double sinAngle, double cosAngle);
+    void rotate(double centerX, double centerY, double angle);
+    void rotate(double centerX, double centerY, double sinAngle, double cosAngle);
+
+    // Boundary
+    // The minimum enclosing rectangle
+    void updateExtent() { extent = geom->getExtent(); }
+    const GeoExtent& getExtent() const { return extent; }
 
 
-	/********************************************          
-	**
-	**	field
-	**
-	*********************************************/
+    /********************************************
+    **
+    **	field
+    **
+    *********************************************/
 
-	// 设置字段值前必须确保该字段已经有个初始值
-	void initNewFieldValue();
+    // Init all fields' value before call setField(...)
+    void initNewFieldValue();
 
-	// 获取字段值
-	template<typename T>
-	bool getField(QString name, T* outValue) const {
-		return getField(getFieldIndexByName(name), outValue);
-	}
+    // Get field's value
+    template<typename T>
+    bool getField(QString name, T* outValue) const {
+        return getField(getFieldIndexByName(name), outValue);
+    }
 
-	template<typename T>
-	bool getField(int idx, T* outValue) const {
-		if (checkFieldIndex(idx)) {
-			*outValue = *(T*)fieldValues[idx];
-			return true;
-		}
-		else {
-			return false;
-		}
-	}
+    template<typename T>
+    bool getField(int idx, T* outValue) const {
+        *outValue = *(T*)fieldValues[idx];
+        return true;
+    }
 
-	// 设置字段值
-	template<typename T>
-	void setField(int idx, T valueIn) {
-		if (checkFieldIndex(idx)) {
-			initNewFieldValue();
-			*(T*)(fieldValues[idx]) = valueIn;
-		}
-	}
+    // Set field's value
+    template<typename T>
+    void setField(int idx, T valueIn) {
+        initNewFieldValue();
+        *(T*)(fieldValues[idx]) = valueIn;
+    }
 
-	template<typename T>
-	void setField(QString name, T valueIn) {
-		setField(getFieldIndexByName(name), valueIn);
-	}
+    template<typename T>
+    void setField(QString name, T valueIn) {
+        setField(getFieldIndexByName(name), valueIn);
+    }
 
-	// 每个feature都有一个唯一FID（在所属的图层中唯一）
-	int getFID() const { return nFID; }
-	void setFID(int nFIDIn) { nFID = nFIDIn; }
+    int getFID() const { return nFID; }
+    void setFID(int nFIDIn) { nFID = nFIDIn; }
 
-	int getNumFields() const { return (*fieldDefns).size(); }
-	QString getFieldName(int idx) const;
-	GeoFieldType getFieldType(int idx) const;
-	GeoFieldType getFieldType(const QString& name) const;
+    int getNumFields() const { return (*fieldDefns).size(); }
+    QString getFieldName(int idx) const;
+    GeoFieldType getFieldType(int idx) const;
+    GeoFieldType getFieldType(const QString& name) const;
 
-	// 边界
-	void updateExtent() { extent = geom->getExtent(); }
-	GeoExtent getExtent() const { return extent; }
+    bool isFieldExist(const QString& fieldName, Qt::CaseSensitivity cs = Qt::CaseSensitive) const;
+    bool isFieldExistLike(const QString& fieldName, Qt::CaseSensitivity cs = Qt::CaseSensitive) const;
+    int getFieldIndexByName(const QString& name) const;
 
-	// 字段是否存在
-	bool isFieldExist(const QString& fieldName, Qt::CaseSensitivity cs = Qt::CaseSensitive) const;
-	// 字段是否存在（模糊匹配）
-	bool isFieldExistLike(const QString& fieldName, Qt::CaseSensitivity cs = Qt::CaseSensitive) const;
-	// 获取字段索引，即字段在第几列
-	int getFieldIndexByName(const QString& name) const;
+
+    /********************************************
+    **
+    **   Draw to screen
+    **
+    *********************************************/
+
+    void setOpenglFeatureDescriptor(OpenglFeatureDescriptor* desc);
+
+    void Draw() const;
+    void HighlightDraw() const;
+
+    // Selected
+    bool isDeleted() const { return deleted; }
+    bool isSelected() const { return selected; }
+    void setDeleted(bool b) { deleted = b; }
+    void setSelected(bool b) { selected = b; }
+
+    // Color (including point's color, line's color, polygon's fill color
+    void setColor(unsigned int colorIn, bool bUpdate = false);
+    void setColor(int r, int g, int b, bool bUpdate = false);
+    void getColorF(float&r, float &g, float& b);
+
+    // Border color, only for polygon features
+    void setBorderColor(int colorIn, bool bUpdate = false);
+    void setBorderColor(int r, int g, int b, bool bUpdate = false);
+    void getBorderColorF(float& r, float& g, float& b);
 
 private:
-	// 检查下标索引的合法性
-	bool checkFieldIndex(int idx) const
-		{ return idx > -1 && idx < (*fieldDefns).size(); }
-	bool checkFieldName(const QString& name) const;
+    bool checkFieldName(const QString& name) const;
+    void setColor_(float r, float g, float b);
+    void setBorderColor_(float r, float g, float b);
 
 private:
-	// FID 不是属性表中的字段， 但是会显示在属性表中
-	int nFID = 0;
+    // Uniquely identify a feature in a layer
+    int nFID = 0;
 
-	/* 将边界缓存起来，加快获取边界的速度
-	** 必要时调用updateExtent()更新 */
-	GeoExtent extent;
+    // Cache the extent to speed up the get-opeartion
+    GeoExtent extent;
 
-	// geometry(一个feature只有一个）
-	GeoGeometry* geom = nullptr;
+    // geometry (Only one geom in one feature)
+    GeoGeometry* geom = nullptr;
 
-	/* Field defination 
-	** 每个图层只有一份属性表字段的定义
-	** 每个图层中的要素保存一份指针 */
-	std::vector<GeoFieldDefn*>* fieldDefns; 
-	
-	/* 相应字段具体的值
-	** 读取数据是根据相应字段的字段定义中的字段类型进行指针的转换 */
-	std::vector<void*> fieldValues;
+    /* Field defination
+    ** There is only one defination in one layer.
+    ** And each features in the layer just holds a pointer of the defination */
+    std::vector<GeoFieldDefn*>* fieldDefns;
+
+    // Field values
+    // Stored as void pointer, get the type from the fieldDefns
+    std::vector<void*> fieldValues;
+
+    /* VAO, VBO, IBOs */
+    OpenglFeatureDescriptor* openglFeatureDesc = nullptr;
+
+    bool selected = false;
+    bool deleted  = false;
+
+    // Point's color, LineString's color, Polygon's fill color
+    QRgb color = utils::getRandomColor();   // define QRgb unsigned int
+
+    // Polygon's border color. So this is only used in polygon features
+    QRgb borderColor = Qt::black;
 };
-

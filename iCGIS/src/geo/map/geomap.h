@@ -1,12 +1,7 @@
 /*******************************************************
 ** class name:  GeoMap
 **
-** description: 地图类，地图由若干图层组成
-**				每个图层都有个唯一的LID， 只增不减			
-**				每次添加新图层，currentLID自增1			
-**				图层的LID是固定的，但索引值(下标)可能会变	
-**
-** last change: 2020-01-04
+** last change: 2020-03-26
 *******************************************************/
 #pragma once
 
@@ -20,72 +15,91 @@
 
 class GeoMap {
 public:
-	// 图层显示顺序 结构体
-	struct LayerOrder {
-		LayerOrder(int nLID, int nOrder)
-			: LID(nLID), order(nOrder) {}
-		int LID;
-		int order;
-	};
+    struct LayerOrder {
+        LayerOrder(int nLID, int nOrder)
+            : LID(nLID), order(nOrder) {}
+        int LID;
+        int order;
+    };
 
 public:
-	GeoMap();
-	~GeoMap();
+    GeoMap() {}
+    GeoMap(const GeoMap& rhs);
+    ~GeoMap();
 
-	/******************************
-	**  GeoLayer				
-	*****************************/
-	bool isEmpty() const { return layers.empty(); }
-	int getNumLayers() const { return layers.size(); }
-	GeoLayer* getLayerByOrder(int order) const;
-	GeoLayer* getLayerById(int idx) const { return layers[idx]; }
-	GeoLayer* getLayerByLID(int nLID) const;
-	GeoLayer* getLayerByName(const QString& name) const;
-	GeoLayer* getLastLayer() const;
-	int getLayerLIDByOrder(int order) const
-		{ return layerOrders[order]; }
-	int getLayerIndexByOrder(int order) const;
-	int getLayerIndexByLID(int lid) const;
-	int getLayerIndexByName(const QString& name) const;
+    // Deep copy
+    GeoMap* copy();
 
-	// 添加图层，返回该图层的LID
-	int addLayer(GeoLayer* layerIn);
-	// 删除图层
-	bool removeLayerByLID(int nLID);
-	bool removeLayerByName(const QString& name);
-	// 将nLID的图层移动到insertLID图层的前面
-	void changeLayerOrder(int nLID, int insertLID);
+    // Draw
+    void Draw() const;
 
-	bool checkLayerIndex(int idx) const
-		{ return idx > -1 && idx < layers.size(); }
+    /******************************
+    **  GeoLayer
+    *****************************/
+    bool isEmpty() const { return layers.empty(); }
+    int getNumLayers() const { return layers.size(); }
+    GeoLayer* getLayerByOrder(int order) const;
+    GeoLayer* getLayerById(int idx) const { return layers[idx]; }
+    GeoLayer* getLayerByLID(int nLID) const;
+    GeoLayer* getLayerByName(const QString& name) const;
+    GeoLayer* getLastLayer() const;
+    int getLayerLIDByOrder(int order) const
+    { return layerOrders[order]; }
+    int getLayerIndexByOrder(int order) const;
+    int getLayerIndexByName(const QString& name) const;
+    int getLayerIndexByLID(int lid) const;
 
-	std::vector<GeoLayer*>::iterator begin() { return layers.begin(); }
-	std::vector<GeoLayer*>::iterator end() { return layers.end(); }
+    // Add layer to the map, and return the layer's ID
+    int addLayer(GeoLayer* layerIn);
+    // Remove layer
+    bool removeLayerByLID(int nLID);
+    // Move layer(nLID) in front of layer(insertLID)
+    void changeLayerOrder(int nLID, int insertLID);
+
+    std::vector<GeoLayer*>::iterator begin() { return layers.begin(); }
+    std::vector<GeoLayer*>::iterator end() { return layers.end(); }
 
 
-	/******************************
-	**  Property	
-	*****************************/
-	QString getName() const { return properties.name; }
-	GeoExtent getExtent() const { return properties.extent; }
-	bool isEditable() const;
+    /******************************
+    **  Property
+    *****************************/
+    QString getName() const { return properties.name; }
+    GeoExtent getExtent() const { return properties.extent; }
 
-	void setName(const QString& nameIn) { properties.name = nameIn; }
-	void updateExtent();
+    void setName(const QString& nameIn) { properties.name = nameIn; }
+    void updateExtent();
+
+    /************************************************
+    **  Spatial query (DO NOT use spatial index)
+    ************************************************/
+    void queryFeature(double x, double y, double halfEdge,
+                      GeoFeatureLayer*& layerOut,
+                      GeoFeature*& featureOut);
+    void queryFeatures(const GeoExtent& extent,
+                       std::map<GeoFeatureLayer*, std::vector<GeoFeature*>>& featuresOut);
+
+    /*********************************
+    **  Select features
+    *********************************/
+    void getAllSelectedFeatures(std::map<GeoFeatureLayer*, std::vector<GeoFeature*>>& selectedFeatures);
+    void emplaceSelectedFeature(int nLID, GeoFeature* sf);
+    void emplaceSelectedFeatures(int nLID, const std::vector<GeoFeature*>& sfs);
+    void emplaceSelectedFeatures(GeoFeatureLayer* layer, const std::vector<GeoFeature*>& sfs);
+    void setSelectedFeatures(const std::map<GeoFeatureLayer*, std::vector<GeoFeature*>>& sfs);
+    void clearSelectedFeatures();
+    void offsetSelectedFeatures(double xOffset, double yOffset);
 
 private:
-	/* 当前地图中最后一个图层的LID的下一个LID */
-	/* 每次新增图层是自增1 */	
-	int currentLID = 0;
+    /* The id of the next layer to be added */
+    /* Automatically increase */
+    int currentLID = 0;
 
-	// 图层列表
-	std::vector<GeoLayer*> layers;
-	
-	// 地图属性
-	GeoMapProperty properties;
+    std::vector<GeoLayer*> layers;
 
-	// layerOrders[n] 表示顺序为n的图层的LID
-	// 通过该下标获取到相应图层
-	std::deque<int> layerOrders;
+    // Map's prperties
+    GeoMapProperty properties;
+
+    // layerOrders[n] is the LID of the layer in order n
+    // the top layer's order is 0
+    std::deque<int> layerOrders;
 };
-

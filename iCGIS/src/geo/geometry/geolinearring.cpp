@@ -1,25 +1,34 @@
 #include "geogeometry.h"
 
 
-// 是否 顺时针
-bool GeoLinearRing::isClockwise() const
+GeoLinearRing::GeoLinearRing(const GeoLinearRing& rhs)
+    : GeoLineString(rhs)
 {
-	// TODO...
-	return true;
 }
 
-// 闭合环
+GeoGeometry* GeoLinearRing::copy() {
+    return new GeoLinearRing(*this);
+}
+
+
+bool GeoLinearRing::isClockwise() const
+{
+    // TODO...
+    return true;
+}
+
+// force to close the ring
 void GeoLinearRing::closeRings()
 {
-	int nPoints = points.size();
-	if (nPoints < 2)
-		return;
+    int nPoints = points.size();
+    if (nPoints < 2)
+        return;
 
-	if (getX(0) != getX(nPoints - 1) 
-		|| getY(0) != getY(nPoints - 1))
-	{
-		addPoint(getX(0), getY(0));
-	}
+    if (!utils::isEqual(getX(0), getX(nPoints - 1))
+        || !utils::isEqual(getY(0), getY(nPoints - 1)))
+    {
+        addPoint(getX(0), getY(0));
+    }
 }
 
 
@@ -27,10 +36,10 @@ void GeoLinearRing::closeRings()
 
 GeometryType GeoLinearRing::getGeometryType() const
 {
-	return kLinearRing;
+    return kLinearRing;
 }
 
 const char* GeoLinearRing::getGeometryName() const
 {
-	return "LINEARRING";
+    return "LINEARRING";
 }

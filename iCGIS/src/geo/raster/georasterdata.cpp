@@ -1,41 +1,35 @@
 #include "geo/raster/georasterdata.h"
 
+GeoRasterData::GeoRasterData(const GeoRasterData& rhs) {
+    int count = rhs.bands.size();
+    bands.reserve(count);
+    for (int i = 0; i < count; ++i) {
+        bands.push_back(new GeoRasterBand(*(rhs.bands[i])));
+    }
+}
 
 GeoRasterData::~GeoRasterData()
 {
-	if (!bands)
-		return;
-
-	for (int i = 0; i < bandsCount; ++i) {
-		delete bands[i];
-	}
-	delete[] bands;
+    for (auto& band : bands)
+        delete band;
 }
 
 GeoExtent GeoRasterData::getExtent() const
 {
-	if (bandsCount < 1)
-		return GeoExtent();
+    if (bands.empty())
+        return GeoExtent();
 
-	GeoExtent extent = bands[0]->getExtent();
-	for (int i = 1; i < bandsCount; ++i) {
-		extent.merge(bands[i]->getExtent());
-	}
-	return extent;
+    // All bands have the same extent
+    return bands[0]->getExtent();
 }
 
-void GeoRasterData::setBandsCount(int count)
+void GeoRasterData::addBand(GeoRasterBand* band)
 {
-	bandsCount = count;
-	if (bands) {
-		// Should not be here
-	}
-
-	bands = new GeoRasterBand*[count];
+    bands.emplace_back(band);
 }
 
-void GeoRasterData::setBand(int idx, GeoRasterBand* band)
-{
-	bands[idx] = band;
+void GeoRasterData::Draw() const {
+    for (auto& band : bands) {
+        band->Draw();
+    }
 }
-

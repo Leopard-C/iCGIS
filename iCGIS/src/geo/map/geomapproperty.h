@@ -1,7 +1,7 @@
 /*******************************************************
 ** class name:  GeoMapProperty
 **
-** description: GeoMap的属性类
+** description: Properties of map
 **
 ** last change: 2020-01-02
 *******************************************************/
@@ -14,10 +14,10 @@
 
 class GeoMapProperty {
 public:
-	GeoMapProperty() = default;
-	~GeoMapProperty() = default;
+    GeoMapProperty() = default;
+    ~GeoMapProperty() = default;
 
 public:
-	QString name = "untitled";
-	GeoExtent extent;
+    QString name = "untitled";
+    GeoExtent extent;
 };

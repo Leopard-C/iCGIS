@@ -1,30 +1,35 @@
 /*************************************************************************
 ** class name:  GeoRasterData
 **
-** description: 栅格数据（基类），暂时只支持32bit(float)灰度图像
+** description: Raster data
 **
-** last change: 2020-01-04
+** last change: 2020-03-25
 *************************************************************************/
 #pragma once
 
 #include "geo/raster/georasterband.h"
+#include <vector>
 
 
 class GeoRasterData {
 public:
-	GeoRasterData() {}
-	virtual ~GeoRasterData();
+    GeoRasterData() {}
+    GeoRasterData(const GeoRasterData& rhs);
+    virtual ~GeoRasterData();
 
-	int getBandsCount() const { return bandsCount; }
-	GeoRasterBand* getBand(int idx) const { return bands[idx]; }
-	GeoExtent getExtent() const;
+    int getBandsCount() const { return bands.size(); }
+    GeoRasterBand* getBand(int idx) const { return bands[idx]; }
+    GeoExtent getExtent() const;
 
-	void setBandsCount(int count);
-	void setBand(int idx, GeoRasterBand* band);
+    void addBand(GeoRasterBand* band);
+
+    void Draw() const;
+
+    std::vector<GeoRasterBand*>::iterator begin() { return bands.begin(); }
+    std::vector<GeoRasterBand*>::iterator end() { return bands.end(); }
 
 private:
-	GeoRasterBand** bands = nullptr;
-	int bandsCount = 0;
+    std::vector<GeoRasterBand*> bands;
 };
 
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "utility.h"
+#include "util/utility.h"
 
 
 /**************************************************/
@@ -73,6 +73,23 @@ public:
 		maxY = MAX(maxY, yy);
 	}
 
+    void offsetX(double offset) {
+        minX += offset;
+        maxX += offset;
+    }
+
+    void offsetY(double offset) {
+        minY += offset;
+        maxY += offset;
+    }
+
+    void offset(double xOffset, double yOffset) {
+        minX += xOffset;
+        maxX += xOffset;
+        minY += yOffset;
+        maxY += yOffset;
+    }
+
 	bool isIntersect(const GeoExtent& rhs) const {
 		return minX <= rhs.maxX && maxX >= rhs.minX &&
 			minY <= rhs.maxY && maxY >= rhs.minY;
@@ -113,4 +130,3 @@ public:
 	double minY;
 	double maxY;
 };
-

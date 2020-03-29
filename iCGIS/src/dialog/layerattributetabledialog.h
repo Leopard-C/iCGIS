@@ -1,9 +1,9 @@
 /*******************************************************
 ** class name:  LayerAttributeTableDialog
 **
-** description: 图层属性表 窗口
+** description: Layer's attribute table
 **
-** last change: 2020-01-02
+** last change: 2020-03-28
 *******************************************************/
 #pragma once
 
@@ -13,42 +13,44 @@
 #include <QTableWidgetItem>
 #include <QToolBar>
 
-#include "memoryleakdetect.h"
-#include "geo/map/geolayer.h"
-
-class OpenGLWidget;
+class GeoFeatureLayer;
 
 
 class LayerAttributeTableDialog : public QDialog
 {
-	Q_OBJECT
-
+    Q_OBJECT
 public:
-	LayerAttributeTableDialog(GeoFeatureLayer* layerIn, OpenGLWidget* openglWidget, QWidget *parent);
-	~LayerAttributeTableDialog();
+    LayerAttributeTableDialog(GeoFeatureLayer* layerIn, QWidget *parent);
+    ~LayerAttributeTableDialog();
+
+signals:
+    void sigUpdateOpengl();
 
 public slots:
-	void onSelectRows();
+    void onUpdate();
+    void onSelectRows();
+    void onRemoveSelected();
+    void onClearSelected();
 
 public:
-	void createWidgets();
-	void createActions();
-	void createToolBar();
-	void setupLayout();
+    void createWidgets();
+    void createActions();
+    void createToolBar();
+    void setupLayout();
 
 private:
-	static void readAttributeTable(GeoFeatureLayer* layer, QTableWidget* tableWidget);
+    void readAttributeTable();
 
-public:
-	GeoFeatureLayer* layer;
+private:
+    GeoFeatureLayer* layer;
 
-	// widgets
-	QTableWidget* tableWidget;
-	OpenGLWidget* openglWidget;
+    // widgets
+    QTableWidget* tableWidget;
 
-	// toolBar
-	QToolBar* toolBar;
+    // toolBar
+    QToolBar* toolBar;
 
-	// actions
-	QAction* removeRecorsdAction;
+    // actions
+    QAction* clearSelectedAction;
+    QAction* removeRecorsdAction;
 };

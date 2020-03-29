@@ -1,73 +1,64 @@
 #include "geogeometry.h"
+#include "geo/utility/geo_math.h"
 
-
-GeoLineString::GeoLineString()
+GeoLineString::GeoLineString(const GeoLineString& rhs) :
+    points(rhs.points)
 {
 }
 
-GeoLineString::~GeoLineString()
-{
+GeoGeometry* GeoLineString::copy() {
+    return (new GeoLineString(*this));
 }
 
 void GeoLineString::getPoint(int idx, GeoPoint* point) const
 {
-	if (idx < 0 || idx > points.size() || !point)
-		return;
-
-	point->setX(points[idx].x);
-	point->setY(points[idx].y);
+    point->setX(points[idx].x);
+    point->setY(points[idx].y);
 }
 
 void GeoLineString::getRawPoint(int idx, GeoRawPoint* rawPoint) const
 {
-	if (idx < 0 || idx > points.size() || !rawPoint)
-		return;
-	rawPoint->x = points[idx].x;
-	rawPoint->y = points[idx].y;
+    rawPoint->x = points[idx].x;
+    rawPoint->y = points[idx].y;
 }
 
 double* GeoLineString::getRawData()
 {
-	return &(points[0].x);
+    if (points.empty())
+        return nullptr;
+    else
+        return &(points[0].x);
 }
 
 void GeoLineString::removePoint(int idx)
 {
-	if (checkIndex(idx))
-		points.erase(points.begin() + idx);
+    points.erase(points.begin() + idx);
 }
 
 void GeoLineString::setPoint(int idx, double xx, double yy)
 {
-	if (checkIndex(idx)) {
-		this->points[idx].x = xx;
-		this->points[idx].y = yy;
-	}
+    this->points[idx].x = xx;
+    this->points[idx].y = yy;
 }
 
 void GeoLineString::setPoint(int idx, GeoPoint* point)
 {
-	setPoint(idx, point->getX(), point->getY());
+    setPoint(idx, point->getX(), point->getY());
 }
 
 void GeoLineString::addPoint(double xx, double yy)
 {
-	this->points.emplace_back(xx, yy);
+    this->points.emplace_back(xx, yy);
 }
 
 void GeoLineString::addPoint(const GeoRawPoint& rawPoint)
 {
-	this->points.emplace_back(rawPoint);
+    this->points.emplace_back(rawPoint);
 }
 
-bool GeoLineString::checkIndex(int idx) const
+void GeoLineString::reserveNumPoints(int count)
 {
-	return idx > -1 && idx < points.size();
-}
-
-void GeoLineString::reserveNumPoints(size_t count)
-{
-	this->points.reserve(count);
+    this->points.reserve(count);
 }
 
 
@@ -75,44 +66,55 @@ void GeoLineString::reserveNumPoints(size_t count)
 
 GeometryType GeoLineString::getGeometryType() const
 {
-	return kLineString;
+    return kLineString;
 }
 
 const char* GeoLineString::getGeometryName() const
 {
-	return "LINESTRING";
+    return "LINESTRING";
 }
 
 int GeoLineString::getNumPoints() const
 {
-	return points.size();
+    return points.size();
 }
 
 GeoExtent GeoLineString::getExtent() const
 {
-	if (isEmpty()) 
-		return GeoExtent();
+    if (isEmpty())
+        return GeoExtent();
 
-	GeoExtent extentOut(points[0]);
+    GeoExtent extentOut(points[0]);
 
-	size_t count = points.size();
-	for (int i = 1; i < count; ++i) {
-		extentOut.merge(points[i]);
-	}
+    int count = points.size();
+    for (int i = 1; i < count; ++i) {
+        extentOut.merge(points[i]);
+    }
 
-	return extentOut;
+    return extentOut;
 }
 
 bool GeoLineString::isEmpty() const
 {
-	return points.empty();
+    return points.empty();
 }
 
 void GeoLineString::swapXY()
 {
-	size_t count = points.size();
-	for (int i = 0; i < count; ++i) {
-		std::swap(points[i].x, points[i].y);
-	}
+    for (auto& point : points) {
+        std::swap(point.x, point.y);
+    }
 }
 
+void GeoLineString::offset(double xOffset, double yOffset) {
+    for (auto& point : points) {
+        point.x += xOffset;
+        point.y += yOffset;
+    }
+}
+
+void GeoLineString::rotate(double centerX, double centerY, double sinAngle, double cosAngle) {
+    for (auto& point : points) {
+        gm::rotate(centerX, centerY, point.x, point.y, sinAngle, cosAngle);
+    }
+}

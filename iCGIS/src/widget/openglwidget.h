@@ -1,142 +1,141 @@
-/*******************************************************
+/**************************************************************************
 ** class name:  OpenGLWidget
 **
-** description: OpenGL控件，用于绘制地图
+** description: OpenGL widget, public inherited from QOpengGLWidget
 **
-** last change: 2020-01-02
-*******************************************************/
+** last change: 2020-03-27
+**************************************************************************/
 #pragma once
 
-#include "memoryleakdetect.h"
+#include "opengl/glcall.h"
+#include "util/memoryleakdetect.h"
 #include "geo/map/geomap.h"
 #include "opengl/renderer.h"
-#include "opengl/layermanager/opengllayermanager.h"
+
+#include "dialog/whatisthisdialog.h"
+#include "operation/operationlist.h"
 
 #include <QOpenGLWidget>
 #include <QMouseEvent>
 #include <QWheelEvent>
+#include <QKeyEvent>
 #include <vector>
 
-// OpenGL数学库
+// OpenGL math library
 #include <glm/glm.hpp>
+
 
 
 class OpenGLWidget : public QOpenGLWidget
 {
-	Q_OBJECT
+    Q_OBJECT
 public:
-	explicit OpenGLWidget(GeoMap* mapIn, QWidget* parent = 0);
-	~OpenGLWidget();
+    explicit OpenGLWidget(QWidget* parent = nullptr);
+    ~OpenGLWidget();
 
-signals:	
-
-public:
-	// 发送FeatureLayer数据到GPU
-	void sendDataToGPU(GeoFeatureLayer* featureLayer);
-	// 发送RasterLayer数据到GPU
-	void sendDataToGPU(GeoRasterLayer* rasterLayer);
+signals:
+    // Status bar
+    // Change the cursor position at the world system timely in real time.
+    void sigUpdateCoord(double geoX, double geoY);
 
 public slots:
-	void onLayerOrderChanged();
-	void onStartEditing(bool);
-	void onRemoveLayer(int nLID);
-	void onZoomToLayer(int nLID);
-	void onSelectFeature(int nLID, int nFID);
-	void onSelectFeature(int nLID, GeoFeature* feature);
-	void onSelectFeatures(int nLID, const std::vector<int>& nFIDs);
-	void onSelectFeatures(int nLID, const std::vector<GeoFeature*>& features);
+    // Send Data to GPU
+    void onSendMapToGPU(bool bUpdate = true);
+    void onSendLayerToGPU(GeoLayer* layer, bool bUpdate = true);
+    void onSendFeatureToGPU(GeoFeature* feature);
+    void onSendFeatureLayerToGPU(GeoFeatureLayer* featureLayer, bool bUpdate = true);
+    void onSendRasterLayerToGPU(GeoRasterLayer* rasterLayer, bool bUpdate = true);
 
-	void onAutoSendDataToGPU();
-
-	// 修改要素的填充色
-	void setFillColor(int nLID, int nFID, int r, int g, int b, bool bUpdate = true);
-
-
+    //void onZoomToLayer(int nLID);
+    void onZoomToLayer(GeoLayer* layer);
+    void onZoomToMap();
 
 private:
-	// 世界坐标系坐标到屏幕坐标
-	// 偶尔使用，绘图时，由GPU进行计算转换
-	QPoint xy2screen(double geoX, double geoY);
+    GeoMap*& map;
 
-	// 屏幕坐标到世界坐标系坐标
-	GeoRawPoint screen2xy(int screenX, int screenY);
+    // WCS ==> SCS  (world/screen coordinate system)
+    // Just use occasionally
+    // When draw shapes, it will be processed by GPU
+    QPoint xy2screen(double geoX, double geoY);
 
-	// 屏幕坐标到规范立方体坐标(-1.0f <= x,y,z <= 1.0f)
-	GeoRawPoint screen2stdxy(int screenX, int screenY);
+    // SCS ==> WCS
+    GeoRawPoint screen2xy(int screenX, int screenY);
 
-	// 修改MVP矩阵
-	void updateMVP(bool updateModel = true, bool updateView = true, bool updateProj = false);	// 重新计算MVP
-	void setMVP();		// 将新的MVP传递给OpenGL
+    // SCS ==> [-1.0 <= x,y,x <= 1.0f]
+    GeoRawPoint screen2stdxy(int screenX, int screenY);
 
-	// 清空选中的要素
-	void clearSelected();
+    // Length in: SCS ==> WCS
+    double getLengthInWorldSystem(int screenLength);
 
-	// 绘制填充矩形
-	void drawRectFillColor(const QPoint& startPoint, const QPoint& endPoint,
-		float r, float g, float b, float a = 1.0f);
+    // Update MVP matrix
+    void updateMVP(bool updateModel = true, bool updateView = true, bool updateProj = false);
+	void setMVP();
 
-	// 绘制矩形边框
-	void drawRectNoFill(const QPoint& startPoint, const QPoint& endPoint,
-		float r = 0.0f, float g = 0.0f, float b = 0.0f, int lineWidth = 1);
+    // clear selected features
+    void clearSelected();
+
+    // Draw rectangle width fill color
+    void drawRectFillColor(const QPoint& startPoint, const QPoint& endPoint,
+                           float r, float g, float b, float a = 1.0f);
+
+    // Draw rectangel with border only
+    void drawRectNoFill(const QPoint& startPoint, const QPoint& endPoint,
+                        float r = 0.0f, float g = 0.0f, float b = 0.0f, int lineWidth = 1);
 
 protected:
-	/* override */
-	virtual void initializeGL() override;
-	virtual void resizeGL(int w, int h) override;
-	virtual void paintGL() override;
+    /* override */
+    virtual void initializeGL() override;
+    virtual void resizeGL(int w, int h) override;
+    virtual void paintGL() override;
 
-	/* Event */
-	virtual void mousePressEvent(QMouseEvent* ev) override;
-	virtual void mouseMoveEvent(QMouseEvent* ev) override;
-	virtual void mouseReleaseEvent(QMouseEvent* ev) override;
-	virtual void wheelEvent(QWheelEvent* ev) override;
-
-private:
-	void sendPointToGPU(GeoPoint* point, float r, float g, float b,
-		OpenglFeatureDescriptor*& featureDesc);
-	void sendMultiPointToGPU(GeoMultiPoint* mutliPoint, float r, float g, float b,
-		OpenglFeatureDescriptor*& featureDesc);
-	void sendLineStringToGPU(GeoLineString* lineString, float r, float g, float b,
-		OpenglFeatureDescriptor*& featureDesc);
-	void sendMultiLineStringToGPU(GeoMultiLineString* multiLineString, float r, float g, float b,
-		OpenglFeatureDescriptor*& featureDesc);
-	void sendPolygonToGPU(GeoPolygon* polygon, float r, float g, float b,
-		OpenglFeatureDescriptor*& featureDesc);
-	void sendMultiPolygonToGPU(GeoMultiPolygon* multiPolygon, float r, float g, float b,
-		OpenglFeatureDescriptor*& featureDesc);
-
-public:
-	OpenglLayerManager* openglLayerManager = nullptr;
+    /* Event */
+    virtual void mousePressEvent(QMouseEvent* ev) override;
+    virtual void mouseMoveEvent(QMouseEvent* ev) override;
+    virtual void mouseReleaseEvent(QMouseEvent* ev) override;
+    virtual void wheelEvent(QWheelEvent* ev) override;
+    virtual void enterEvent(QEvent*) override;
+    virtual void keyPressEvent(QKeyEvent* ev) override;
 
 private:
-	/************************* MVP **************************/
-	// model
-	float xOffset = 0.0f;
-	float yOffset = 0.0f;
-	float zoom   = 1.0f;
-	glm::mat4 trans;	// 平移
-	glm::mat4 scale;	// 缩放
-	glm::mat4 model;
-	// view
-	glm::mat4 view;
-	// project
-	glm::mat4 proj;
-	/********************** End MVP *************************/
+    OpenglFeatureDescriptor* sendPointToGPU(GeoPoint* point, float r, float g, float b);
+    OpenglFeatureDescriptor* sendMultiPointToGPU(GeoMultiPoint* mutliPoint, float r, float g, float b);
+    OpenglFeatureDescriptor* sendLineStringToGPU(GeoLineString* lineString, float r, float g, float b);
+    OpenglFeatureDescriptor* sendMultiLineStringToGPU(GeoMultiLineString* multiLineString, float r, float g, float b);
+    OpenglFeatureDescriptor* sendPolygonToGPU(GeoPolygon* polygon, float r, float g, float b);
+    OpenglFeatureDescriptor* sendMultiPolygonToGPU(GeoMultiPolygon* multiPolygon, float r, float g, float b);
 
-	// 调整的地图范围（调整至和视口的长宽比一致）
-	GeoExtent adjustedMapExtent;
+private:
+    /************************* MVP **************************/
+    // model
+    float xOffset = 0.0f;
+    float yOffset = 0.0f;
+    float zoom   = 1.0f;
+    glm::mat4 trans;	// translation
+    glm::mat4 scale;	// sacle
+    glm::mat4 model;
+    // view
+    glm::mat4 view;
+    // project
+    glm::mat4 proj;
+    /********************** End MVP *************************/
 
-	bool isRunning = true;
-	bool isEditing = false;
-	bool isRectSelecting = false;
+    // Adjust map's extent width the same aspect ration of OpenGL widget
+    GeoExtent adjustedMapExtent;
 
-	GeoMap* map = nullptr;
-	Renderer* renderer = nullptr;
+    bool isMouseClicked = false;
+    bool isRunning = true;
+    bool isRectSelecting = false;
+    bool isSelected = false;
+    bool isMovingFeatures = false;
+    bool isModified = false;
 
-	// 用于 mouse move 事件 
-	QPoint mouseLastPos;
-	// 用于 mouse release 事件
-	QPoint mouseBeginPos;
-	QPoint mouseCurrPos;
+    // Record the operations: move features, delete features, etc.
+    OperationList& opList;
+
+    QPoint mouseLastPos;
+    QPoint mouseBeginPos;   // when press left button
+    QPoint mouseCurrPos;    // when move mouse
+
+    // What is this
+    WhatIsThisDialog* whatIsThisDialog = nullptr;
 };
-

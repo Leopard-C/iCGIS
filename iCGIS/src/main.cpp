@@ -7,7 +7,7 @@ int main(int argc, char *argv[])
 {
 	QApplication a(argc, argv);
 
-	srand(time(0));
+    srand(time(nullptr));
 
 	ICGis w(nullptr);
 	w.setGeometry(100, 100, 1200, 700);

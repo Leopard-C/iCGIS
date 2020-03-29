@@ -1,7 +1,7 @@
 /**************************************************************
 ** class name:  KernelDensityTool
 **
-** description: 核密度分析对话框，父类GeoTool继承自QDialog
+** description: KDE
 **
 ** last change: 2020-01-02
 **************************************************************/
@@ -15,34 +15,35 @@
 #include <QObject>
 
 
-class KernelDensityTool : public GeoTool {
-	Q_OBJECT
+class KernelDensityTool : public GeoTool
+{
+    Q_OBJECT
 public:
-	KernelDensityTool(GeoMap* mapIn, QWidget* parent = nullptr);
-	~KernelDensityTool();
+    KernelDensityTool(QWidget* parent = nullptr);
+    ~KernelDensityTool();
 
 signals:
-	void addedTiffToMap(GeoRasterLayer*);
+    void sigSendLayerToGPU(GeoLayer* layer, bool bUpdate = true);
+    void sigAddNewLayerToLayersTree(GeoLayer* layer, bool bUpdate = true);
 
 private:
-	void setupLayout();
-	void initializeFill();
-	double getDefaultSearchRadius(GeoFeatureLayer* layer);
-	double getDefaultCellSize(GeoFeatureLayer* layer);
+    void setupLayout();
+    void initializeFill();
+    double getDefaultSearchRadius(GeoFeatureLayer* layer);
+    double getDefaultCellSize(GeoFeatureLayer* layer);
 
 public slots:
-	void onChangeInputFeatures(const QString& name);
-	void onSetOutputRaster();
-	void onBtnOKClicked();
+    void onChangeInputFeatures(const QString& name);
+    void onSetOutputRaster();
+    void onBtnOKClicked();
 
 private:
-	QComboBox* comboInputFeatures;
-	QComboBox* comboPopiField;
-	QLineEdit* lineEditOutputRaster;
-	QLineEdit* lineEditOutputCellSize;
-	QLineEdit* lineEditSearchRadius;
-	QComboBox* comboAreaUnits;
-	QComboBox* comboOutputValuesType;
-	QComboBox* comboMethod;
+    QComboBox* comboInputFeatures;
+    QComboBox* comboPopiField;
+    QLineEdit* lineEditOutputRaster;
+    QLineEdit* lineEditOutputCellSize;
+    QLineEdit* lineEditSearchRadius;
+    QComboBox* comboAreaUnits;
+    QComboBox* comboOutputValuesType;
+    QComboBox* comboMethod;
 };
-

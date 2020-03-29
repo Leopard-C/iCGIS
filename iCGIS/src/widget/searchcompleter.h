@@ -8,7 +8,6 @@
 class SearchCompleter : public QCompleter
 {
 	Q_OBJECT
-
 public:
 	SearchCompleter(QObject *parent);
 	~SearchCompleter();

@@ -25,6 +25,17 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <QtRcc Include="icgis.qrc">
+      <Filter>Resource Files</Filter>
+    </QtRcc>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\icgis.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dialog\aboutdialog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\dialog\globalsearchresult.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -37,6 +48,9 @@
     <ClCompile Include="src\dialog\layerstyledialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\dialog\newmapdialog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\dialog\postgresqlconnect.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -44,6 +58,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\dialog\viewlog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dialog\whatisthisdialog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\geo\geometry\geogeometry.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\geo\geometry\geogeometrycollection.cpp">
@@ -76,13 +96,43 @@
     <ClCompile Include="src\geo\index\gridindex.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\geo\index\spatialindex.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\geo\map\geofeature.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\geo\map\geofeaturelayer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\geo\map\geofeaturelayerproperty.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\geo\map\geomap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\geo\map\georasterlayer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\geo\map\georasterlayerproperty.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\geo\raster\georasterband.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\geo\raster\georasterdata.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\geo\raster\geotiff.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\geo\tool\geotool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\geo\tool\kernel_density.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\geo\utility\filereader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\geo\utility\geo_convert.cpp">
@@ -100,19 +150,25 @@
     <ClCompile Include="src\geo\utility\sld.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\opengl\layermanager\opengllayermanager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\opengl\glcall.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\opengl\indexbuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\opengl\openglfeaturedescriptor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\opengl\openglrasterdescriptor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\opengl\renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\opengl\shader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\opengl\texture.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\opengl\vertexarray.cpp">
@@ -122,6 +178,21 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\opengl\vertexbufferlayout.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\operation\operation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\operation\operationlist.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\util\appevent.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\util\env.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\util\utility.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\widget\colorblockwidget.cpp">
@@ -142,53 +213,23 @@
     <ClCompile Include="src\widget\searchcompleter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\widget\statusbar.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\widget\toolbar.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\widget\toolboxtreewidget.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\utility.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\icgis.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\widget\comboboxproxystyle.h">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\geo\map\geofeaturelayerproperty.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\geo\map\georasterlayerproperty.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\geo\utility\filereader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\geo\raster\georasterband.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\geo\raster\geotiff.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\geo\raster\georasterdata.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\geo\map\geofeaturelayer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\geo\map\georasterlayer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\opengl\layermanager\openglfeaturelayerdescriptor.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\opengl\texture.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <QtMoc Include="src\dialog\aboutdialog.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="src\dialog\globalsearchresult.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -201,6 +242,9 @@
     <QtMoc Include="src\dialog\layerstyledialog.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="src\dialog\newmapdialog.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="src\dialog\postgresqlconnect.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -210,10 +254,19 @@
     <QtMoc Include="src\dialog\viewlog.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="src\dialog\whatisthisdialog.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="src\geo\tool\geotool.h">
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="src\geo\tool\kernel_density.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="src\operation\operation.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="src\util\appevent.h">
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="src\widget\colorblockwidget.h">
@@ -231,14 +284,18 @@
     <QtMoc Include="src\widget\searchcompleter.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="src\widget\statusbar.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="src\widget\toolbar.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="src\widget\toolboxtreewidget.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="src\icgis.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-  </ItemGroup>
-  <ItemGroup>
-    <QtRcc Include="icgis.qrc">
-      <Filter>Resource Files</Filter>
-    </QtRcc>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\geo\geometry\geogeometry.h">
@@ -256,6 +313,9 @@
     <ClInclude Include="src\geo\map\geofeature.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\geo\map\geofeaturelayerproperty.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\geo\map\geofielddefn.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -266,6 +326,21 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\geo\map\geomapproperty.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\geo\map\georasterlayerproperty.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\geo\raster\georasterband.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\geo\raster\georasterdata.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\geo\raster\geotiff.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\geo\utility\filereader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\geo\utility\geo_convert.h">
@@ -286,25 +361,25 @@
     <ClInclude Include="src\geo\geo_base.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\opengl\layermanager\openglfeaturedescriptor.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\opengl\layermanager\opengllayerdescriptor.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\opengl\layermanager\opengllayermanager.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\opengl\glcall.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\opengl\indexbuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\opengl\openglfeaturedescriptor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\opengl\openglrasterdescriptor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\opengl\renderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\opengl\shader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\opengl\texture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\opengl\vertexarray.h">
@@ -316,43 +391,25 @@
     <ClInclude Include="src\opengl\vertexbufferlayout.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\operation\operationlist.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\util\env.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\util\logger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\util\memoryleakdetect.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\util\utility.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\widget\layerstreewidgetitem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\widget\toolboxtreewidget.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\logger.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\memoryleakdetect.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utility.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\geo\map\geofeaturelayerproperty.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\geo\map\georasterlayerproperty.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\geo\utility\filereader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\geo\raster\georasterband.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\geo\raster\geotiff.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\geo\raster\georasterdata.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\opengl\layermanager\openglrasterdescriptor.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\opengl\texture.h">
+    <ClInclude Include="src\stable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

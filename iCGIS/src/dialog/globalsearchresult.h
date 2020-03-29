@@ -1,7 +1,7 @@
 /*******************************************************
 ** class name:  GlobalSearchResult
 **
-** description: 全局搜索的搜索结果显示
+** description: Shwo the result of global search
 **
 ** last change: 2020-01-02
 *******************************************************/
@@ -15,58 +15,57 @@
 #include <map>
 #include <vector>
 
-#include "geo/map/geomap.h"
-
+class GeoMap;
+class GeoFeature;
 class OpenGLWidget;
 
 
 class GlobalSearchResult : public QDialog
 {
-	Q_OBJECT
+    Q_OBJECT
 
 public:
-	GlobalSearchResult(GeoMap* mapIn, OpenGLWidget* openglWidgetIn, QWidget *parent);
-	~GlobalSearchResult();
+    GlobalSearchResult(QWidget *parent = nullptr);
+    ~GlobalSearchResult();
 
 signals:
-	void closed();
+    void sigClosed();
+    void sigUpdateOpengl();
 
 public slots:
-	// 双击数据区
-	void onDoubleClicked(QTableWidgetItem* item);
+    void onDoubleClicked(QTableWidgetItem* item);
 
 public:
-	void clear();
-	void setupLayout();
-	void addSearchResult(int nLID, const std::vector<GeoFeature*>& features)
-		{ results.emplace_back(nLID, features); }
+    void clear();
+    void setupLayout();
+    void addSearchResult(int nLID, const std::vector<GeoFeature*>& features)
+        { results.emplace_back(nLID, features); }
 
 protected:
-	virtual void closeEvent(QCloseEvent* event) override;
+    virtual void closeEvent(QCloseEvent* event) override;
 
 private:
-	struct SearchResult {
-		SearchResult(int nLID, const std::vector<GeoFeature*>& features)
-			: LID(nLID), features(features) {}
-		int LID;
-		std::vector<GeoFeature*> features;
-	};
+    void clearLayout(QLayout* layout);
 
-	struct CustomData : QObjectUserData {
-		CustomData(int nLID) :LID(nLID) {}
-		int LID;
-	};
+    struct CustomData : QObjectUserData {
+        CustomData(int nLID) :LID(nLID) {}
+        int LID;
+    };
+
+    struct SearchResult {
+        SearchResult(int nLID, const std::vector<GeoFeature*>& features)
+            : LID(nLID), features(features) {}
+        int LID;
+        std::vector<GeoFeature*> features;
+    };
 
 private:
-	void clearLayout(QLayout* layout);
+    std::vector<SearchResult> results;
 
-	std::vector<SearchResult> results;
+    GeoMap*& map;
 
-	GeoMap* map;
-	OpenGLWidget* openglWidget;
-
-	QVBoxLayout* mainLayout = nullptr;
-	QVBoxLayout* scrollAreaLayout = nullptr;
-	QScrollArea* scrollArea = nullptr;
-	QWidget* scrollAreaCenterWidget = nullptr;
+    QVBoxLayout* mainLayout = nullptr;
+    QVBoxLayout* scrollAreaLayout = nullptr;
+    QScrollArea* scrollArea = nullptr;
+    QWidget* scrollAreaCenterWidget = nullptr;
 };

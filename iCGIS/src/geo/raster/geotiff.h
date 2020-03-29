@@ -1,7 +1,5 @@
 /*******************************************************
-** class name:
-**
-** description:
+** class name:  GeoTiff
 **
 ** last change: 2020-01-04
 *******************************************************/
@@ -16,9 +14,4 @@ class GeoTiff : public GeoRasterData {
 public:
 	GeoTiff();
 	~GeoTiff();
-
-public:
-
-private:
-
 };
