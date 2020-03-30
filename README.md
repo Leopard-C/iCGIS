@@ -1,4 +1,4 @@
-Qt Creator版本[Windows & Linux]参见：[Leopard-C/iCGIS-Linux](https://github.com/Leopard-C/iCGIS-Linux)
+本文档暂不更新。更多内容请前往：Qt Creator版本[Windows & Linux]：[Leopard-C/iCGIS-Linux](https://github.com/Leopard-C/iCGIS-Linux)
 
 ## 一、实习目标
 
